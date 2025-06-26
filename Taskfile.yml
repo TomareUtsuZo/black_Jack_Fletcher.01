@@ -1,0 +1,34 @@
+version: '3'
+
+tasks:
+  setup:
+    desc: 'Set up the development environment for a coding session'
+    cmds:
+      - powershell -File ./setup_env.ps1
+      - venv\Scripts\Activate.ps1
+
+  run-flask:
+    desc: 'Run the Flask application'
+    cmds:
+      - powershell -Command "venv\Scripts\activate; python -m backend.src.app"
+
+  test-backend:
+    desc: 'Run all backend tests'
+    cmds:
+      - powershell -Command ".\.venv\Scripts\Activate.ps1; python -m unittest discover -s backend/tests -p 'test_*.py' -v"
+
+  test-functional:
+    desc: 'Run functional tests'
+    cmds:
+      - powershell -Command ".\.venv\Scripts\Activate.ps1; python -m unittest discover -s backend/tests_functional -p 'test_*.py' -v"
+
+  test-gamestate:
+    desc: 'Run only game state related tests'
+    cmds:
+      - powershell -Command ".\.venv\Scripts\Activate.ps1; python -m unittest backend/tests/test_state_manager.py backend/tests/test_game_state_service_singleton.py backend/tests/test_game_state_service_modular.py backend/tests/test_modular_game_state_service.py backend/tests/test_faction_functionality.py -v"
+
+  test-gamelogic:
+    desc: 'Run only game logic related tests (unit and time)'
+    cmds:
+      - powershell -Command ".\.venv\Scripts\Activate.ps1; python -m unittest backend/tests/test_unit.py backend/tests/test_game_time.py -v"
+
