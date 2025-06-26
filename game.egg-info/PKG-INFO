@@ -1,6 +1,0 @@
-Metadata-Version: 2.4
-Name: game
-Version: 0.1
-Requires-Dist: flask
-Requires-Dist: flask-socketio
-Dynamic: requires-dist
