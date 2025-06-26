@@ -4,6 +4,7 @@ tasks:
   setup:
     desc: 'Set up the development environment for a coding session'
     cmds:
+      - python -m venv venv
       - powershell -File ./setup_env.ps1
       - venv\Scripts\Activate.ps1
 
