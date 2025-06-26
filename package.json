@@ -1,0 +1,16 @@
+{
+    "name": "game-frontend",
+    "version": "1.0.0",
+    "description": "Game frontend with TypeScript",
+    "scripts": {
+        "build": "tsc",
+        "watch": "tsc -w"
+    },
+    "devDependencies": {
+        "@types/socket.io-client": "^3.0.0",
+        "typescript": "^5.0.0"
+    },
+    "dependencies": {
+        "socket.io-client": "^4.0.1"
+    }
+} 

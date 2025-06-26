@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "ES2020",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "outDir": "./src/frontend/views/static/js/dist",
+        "rootDir": "./src/frontend/views/static/js",
+        "moduleResolution": "node"
+    },
+    "include": [
+        "src/frontend/views/static/js/**/*"
+    ],
+    "exclude": [
+        "node_modules"
+    ]
+} 

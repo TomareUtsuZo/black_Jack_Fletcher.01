@@ -1,0 +1,7 @@
+README.md
+setup.py
+game.egg-info/PKG-INFO
+game.egg-info/SOURCES.txt
+game.egg-info/dependency_links.txt
+game.egg-info/requires.txt
+game.egg-info/top_level.txt

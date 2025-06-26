@@ -409,5 +409,509 @@ Considerations: [Technical/Design considerations]
 - PR review requirements
 - Documentation update requirements
 
+## Pre-Development Setup and Planning
+
+### 1. Project Structure Setup
+```
+project_root/
+├── src/
+│   ├── core/           # Core game mechanics and systems
+│   ├── models/         # Data models and state management
+│   ├── services/       # Business logic and services
+│   └── utils/          # Utility functions and helpers
+├── tests/
+│   ├── functional/     # Feature behavior tests
+│   ├── integration/    # System integration tests
+│   └── unit/          # Individual component tests
+├── docs/              # Documentation
+│   ├── architecture/  # System design documents
+│   ├── api/          # API documentation
+│   └── features/     # Feature specifications
+└── scripts/          # Development and deployment scripts
+```
+
+### 2. Development Environment Configuration
+1. **IDE Setup**:
+   - Configure auto-formatting (black)
+   - Set up mypy integration
+   - Configure test runner integration
+   - Set up debugging configurations
+
+2. **Git Hooks**:
+   - Pre-commit hooks for linting
+   - Pre-push hooks for tests
+   - Commit message templates
+
+3. **Virtual Environment**:
+   - Python version management
+   - Dependencies isolation
+   - Development vs production requirements
+
+### 3. Documentation Structure
+1. **Architecture Documentation**:
+   - System overview
+   - Component interactions
+   - Data flow diagrams
+   - State management approach
+
+2. **Feature Documentation**:
+   - Feature request template
+   - Implementation guidelines
+   - Testing requirements
+   - Acceptance criteria template
+
+3. **API Documentation**:
+   - API design principles
+   - Endpoint documentation
+   - Request/response formats
+   - Authentication/authorization
+
+### 4. Quality Assurance Setup
+1. **Testing Framework**:
+   - Test naming conventions
+   - Test data management
+   - Mocking strategies
+   - Coverage requirements
+
+2. **Code Quality Tools**:
+   - Linting configuration
+   - Code complexity limits
+   - Documentation requirements
+   - Performance benchmarks
+
+### 5. Project Management
+1. **Issue Tracking**:
+   - Issue templates
+   - Bug report format
+   - Feature request format
+   - Priority levels
+
+2. **Version Control**:
+   - Branch naming convention
+   - PR template
+   - Review checklist
+   - Release process
+
+### 6. Security Considerations
+1. **Code Security**:
+   - Secret management
+   - Authentication flows
+   - Authorization patterns
+   - Input validation
+
+2. **Data Security**:
+   - Data storage
+   - Encryption requirements
+   - Privacy considerations
+   - Backup strategies
+
+### 7. Performance Planning
+1. **Metrics**:
+   - Performance KPIs
+   - Monitoring setup
+   - Logging strategy
+   - Alert thresholds
+
+2. **Optimization**:
+   - Caching strategy
+   - Database indexing
+   - Resource management
+   - Load handling
+
+### 8. Deployment Strategy
+1. **Environment Setup**:
+   - Development
+   - Staging
+   - Production
+   - Testing
+
+2. **CI/CD Pipeline**:
+   - Build process
+   - Test automation
+   - Deployment automation
+   - Rollback procedures
+
+## Architecture: MVVM Implementation
+
+### 1. MVVM Overview
+```
+Game Architecture
+├── Models/
+│   ├── Game entities (units, resources, etc.)
+│   ├── Game state
+│   └── Business logic
+├── Views/
+│   ├── UI components
+│   ├── Rendering systems
+│   └── User input handlers
+└── ViewModels/
+    ├── State management
+    ├── Command handling
+    └── Data transformation
+```
+
+### 2. Layer Responsibilities
+
+1. **Models**:
+   - Pure game state and business logic
+   - No UI or presentation logic
+   - Examples:
+     ```python
+     class GameUnit:
+         def __init__(self, unit_id: str, position: Position) -> None:
+             self.unit_id: str = unit_id
+             self.position: Position = position
+             self._state: UnitState = UnitState.IDLE
+
+         def update_state(self, new_state: UnitState) -> None:
+             # Pure business logic
+             self._state = new_state
+     ```
+
+2. **ViewModels**:
+   - Transforms Model data for View consumption
+   - Handles user commands
+   - Manages UI state
+   - Examples:
+     ```python
+     class GameUnitViewModel:
+         def __init__(self, unit: GameUnit) -> None:
+             self._unit = unit
+             self.position = self._transform_position()
+             self.commands = self._setup_commands()
+
+         def _transform_position(self) -> DisplayPosition:
+             # Transform game coordinates to screen coordinates
+             return DisplayPosition(
+                 x=self._unit.position.x * TILE_SIZE,
+                 y=self._unit.position.y * TILE_SIZE
+             )
+
+         def _setup_commands(self) -> Dict[str, Command]:
+             return {
+                 "move": Command(self._handle_move),
+                 "attack": Command(self._handle_attack)
+             }
+     ```
+
+3. **Views**:
+   - Pure presentation logic
+   - No business logic
+   - Binds to ViewModel
+   - Examples:
+     ```python
+     class UnitView:
+         def __init__(self, view_model: GameUnitViewModel) -> None:
+             self.view_model = view_model
+             self._sprite = None
+
+         def render(self, screen: Surface) -> None:
+             # Pure rendering logic
+             position = self.view_model.position
+             screen.blit(self._sprite, position.to_tuple())
+
+         def handle_click(self, position: Position) -> None:
+             # Delegate to ViewModel
+             self.view_model.commands["select"].execute()
+     ```
+
+### 3. MVVM Benefits for Game Development
+
+1. **Separation of Concerns**:
+   - Game logic isolated from presentation
+   - UI can be changed without affecting game rules
+   - Easier to test each component independently
+
+2. **State Management**:
+   - Clear data flow
+   - Predictable state updates
+   - Easy to implement save/load functionality
+
+3. **Testability**:
+   - Models: Pure business logic tests
+   - ViewModels: State transformation tests
+   - Views: UI interaction tests
+
+### 4. Implementation Guidelines
+
+1. **Data Flow**:
+   ```
+   User Input → View → ViewModel → Model
+   Model → ViewModel → View → Display
+   ```
+
+2. **Communication Patterns**:
+   - Views observe ViewModels
+   - ViewModels transform Model data
+   - Models are pure data and logic
+
+3. **State Updates**:
+   ```python
+   # Example of state propagation
+   class GameViewModel:
+       def __init__(self, game_model: GameModel) -> None:
+           self._model = game_model
+           self._observers: List[Observer] = []
+           self.game_state = self._transform_state()
+
+       def update(self) -> None:
+           # Transform model state for view consumption
+           self.game_state = self._transform_state()
+           self._notify_observers()
+
+       def _transform_state(self) -> GameViewState:
+           return GameViewState(
+               units=self._transform_units(),
+               resources=self._transform_resources(),
+               current_phase=self._transform_phase()
+           )
+   ```
+
+4. **Command Pattern Integration**:
+   ```python
+   class Command:
+       def __init__(self, execute_func: Callable[[], None]) -> None:
+           self._execute = execute_func
+
+       def execute(self) -> None:
+           self._execute()
+
+   class UnitCommands:
+       def __init__(self, view_model: UnitViewModel) -> None:
+           self.move = Command(view_model.handle_move)
+           self.attack = Command(view_model.handle_attack)
+           self.defend = Command(view_model.handle_defend)
+   ```
+
+### 5. Testing Strategy
+
+1. **Model Tests**:
+   ```python
+   def test_unit_movement():
+       unit = GameUnit("unit1", Position(0, 0))
+       unit.move(Position(1, 1))
+       assert unit.position == Position(1, 1)
+   ```
+
+2. **ViewModel Tests**:
+   ```python
+   def test_position_transformation():
+       unit = GameUnit("unit1", Position(1, 1))
+       vm = GameUnitViewModel(unit)
+       assert vm.position == DisplayPosition(32, 32)  # TILE_SIZE = 32
+   ```
+
+3. **View Tests**:
+   ```python
+   def test_click_handling():
+       vm = GameUnitViewModel(mock_unit)
+       view = UnitView(vm)
+       view.handle_click(Position(10, 10))
+       assert vm.selected  # Verify ViewModel state updated
+   ```
+
+---
+This is a living document and will be updated as the project evolves. All changes to this guide must be explicitly approved.
+
+## Architecture: MVVM with Flask and Browser Frontend
+
+### 1. Distributed MVVM Architecture
+```
+Project Structure
+├── Backend (Flask)
+│   ├── Models/
+│   │   ├── game_state.py        # Core game state and logic
+│   │   ├── entities.py          # Game entities
+│   │   └── persistence.py       # Database models
+│   ├── ViewModels/
+│   │   ├── state_transformer.py # Transform game state for API
+│   │   ├── command_handler.py   # Process incoming commands
+│   │   └── websocket_manager.py # Real-time state updates
+│   └── Routes/
+│       ├── api_routes.py        # REST endpoints
+│       ├── websocket_routes.py  # WebSocket endpoints
+│       └── view_routes.py       # Server-side rendered views
+└── Frontend (Browser)
+    ├── Models/
+    │   ├── game_state.js        # Client-side state management
+    │   └── entities.js          # Client-side entity models
+    ├── ViewModels/
+    │   ├── state_manager.js     # Manage UI state
+    │   ├── command_sender.js    # Send commands to backend
+    │   └── websocket_client.js  # Handle real-time updates
+    └── Views/
+        ├── components/          # UI components
+        ├── templates/           # HTML templates
+        └── static/             # CSS, images, etc.
+```
+
+### 2. Communication Flow
+```
+Browser (View) ←→ Frontend (ViewModel) ←→ API/WebSocket ←→ Backend (ViewModel) ←→ Backend (Model)
+```
+
+### 3. Implementation Examples
+
+1. **Backend Model**:
+   ```python
+   from dataclasses import dataclass
+   from typing import Dict, List, Optional
+
+   @dataclass
+   class GameState:
+       game_id: str
+       players: Dict[str, Player]
+       current_turn: str
+       
+       def process_turn(self, player_id: str, action: GameAction) -> None:
+           # Pure game logic
+           if self._is_valid_action(player_id, action):
+               self._apply_action(action)
+               self._update_turn()
+
+   class GameStateService:
+       def __init__(self) -> None:
+           self._games: Dict[str, GameState] = {}
+           
+       def get_game_state(self, game_id: str) -> Optional[GameState]:
+           return self._games.get(game_id)
+```
+
+2. **Backend ViewModel**:
+   ```python
+   from flask_socketio import emit
+   from typing import Dict, Any
+
+   class GameStateViewModel:
+       def __init__(self, game_service: GameStateService):
+           self._service = game_service
+           
+       def transform_game_state(self, game_id: str) -> Dict[str, Any]:
+           """Transform game state for API response"""
+           game = self._service.get_game_state(game_id)
+           return {
+               'gameId': game.game_id,
+               'players': self._transform_players(game.players),
+               'currentTurn': game.current_turn,
+               'validActions': self._get_valid_actions(game)
+           }
+           
+       def handle_action(self, game_id: str, action_data: Dict[str, Any]) -> None:
+           """Process action from frontend"""
+           game = self._service.get_game_state(game_id)
+           action = self._parse_action(action_data)
+           game.process_turn(action_data['playerId'], action)
+           # Emit updated state to all clients
+           emit('game_state_update', self.transform_game_state(game_id), room=game_id)
+```
+
+3. **Flask Routes**:
+   ```python
+   from flask import Blueprint, jsonify
+   from flask_socketio import join_room
+
+   game_routes = Blueprint('game', __name__)
+   
+   @game_routes.route('/api/game/<game_id>')
+   def get_game_state(game_id: str):
+       state = game_state_viewmodel.transform_game_state(game_id)
+       return jsonify(state)
+
+   @socketio.on('join_game')
+   def on_join(data):
+       game_id = data['gameId']
+       join_room(game_id)
+       state = game_state_viewmodel.transform_game_state(game_id)
+       emit('game_state_update', state, room=game_id)
+```
+
+4. **Frontend ViewModel**:
+   ```javascript
+   class GameViewModel {
+       constructor(gameId) {
+           this.gameId = gameId;
+           this.socket = io();
+           this.state = null;
+           this.observers = new Set();
+           
+           // Setup WebSocket listeners
+           this.socket.on('game_state_update', (state) => {
+               this.updateState(state);
+           });
+       }
+       
+       async initialize() {
+           // Get initial state from REST API
+           const response = await fetch(`/api/game/${this.gameId}`);
+           const state = await response.json();
+           this.updateState(state);
+       }
+       
+       updateState(newState) {
+           this.state = newState;
+           this.notifyObservers();
+       }
+       
+       sendAction(action) {
+           this.socket.emit('game_action', {
+               gameId: this.gameId,
+               action: action
+           });
+       }
+   }
+   ```
+
+5. **Frontend View**:
+   ```javascript
+   class GameView {
+       constructor(viewModel) {
+           this.viewModel = viewModel;
+           this.viewModel.observers.add(this);
+           this.setupEventListeners();
+       }
+       
+       update() {
+           // Update UI based on viewModel state
+           this.renderGameBoard();
+           this.updatePlayerInfo();
+           this.highlightCurrentTurn();
+       }
+       
+       setupEventListeners() {
+           document.querySelector('.game-board').addEventListener('click', 
+               (e) => this.handleBoardClick(e));
+       }
+       
+       handleBoardClick(event) {
+           const action = this.parseClickToAction(event);
+           if (action) {
+               this.viewModel.sendAction(action);
+           }
+       }
+   }
+   ```
+
+### 4. Key Benefits of This Architecture
+
+1. **Separation of Concerns**:
+   - Backend handles game logic and state
+   - Frontend handles UI and user interaction
+   - ViewModels handle data transformation and communication
+
+2. **Real-time Updates**:
+   - WebSocket integration for live game state
+   - Consistent state across all clients
+   - Efficient updates without polling
+
+3. **Scalability**:
+   - Independent scaling of frontend and backend
+   - Clear boundaries for distributed system
+   - Easy to add new features without breaking existing ones
+
+4. **Testing**:
+   - Backend logic can be tested independently
+   - Frontend components can be tested in isolation
+   - Integration tests can verify communication flow
+
 ---
 This is a living document and will be updated as the project evolves. All changes to this guide must be explicitly approved. 
