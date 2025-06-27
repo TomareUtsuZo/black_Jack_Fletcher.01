@@ -4,6 +4,7 @@ import pytest
 from uuid import UUID
 
 from src.backend.models.common import Position
+from src.backend.models.common.geometry.nautical_miles import NauticalMiles
 from src.backend.models.units import Unit
 from src.backend.models.units.types import UnitType
 from src.backend.services import UnitFactory
@@ -18,7 +19,9 @@ def test_create_unit_with_defaults() -> None:
     assert unit.attributes.name.startswith("DD")
     assert unit.attributes.unit_type == UnitType.DESTROYER
     assert unit.attributes.position == position
-    assert unit.attributes.max_speed == 35.0
+    assert isinstance(unit.attributes.max_speed, NauticalMiles)
+    assert unit.attributes.max_speed.value == 35.0  # Fletcher-class speed
+    assert unit.attributes.current_speed.value == 0.0  # Starts stationary
     assert unit.attributes.max_health == 100.0
     assert unit.attributes.max_fuel == 1000.0
     assert unit.attributes.task_force_assigned_to is None
@@ -43,6 +46,7 @@ def test_create_unit_with_custom_values() -> None:
     assert unit.attributes.position == position
     assert unit.attributes.task_force_assigned_to == "TF-38"
     assert unit.attributes.unit_id == unit_id
+    assert unit.attributes.max_speed.value == 33.0  # Baltimore-class speed
 
 @pytest.mark.unit
 def test_create_unit_with_hull_number() -> None:
@@ -52,6 +56,7 @@ def test_create_unit_with_hull_number() -> None:
     
     assert unit.attributes.name == "BB-61"
     assert unit.attributes.unit_type == UnitType.BATTLESHIP
+    assert unit.attributes.max_speed.value == 28.0  # Iowa-class speed
 
 @pytest.mark.unit
 def test_create_unit_invalid_type() -> None:
@@ -70,40 +75,47 @@ def test_convenience_methods() -> None:
     destroyer = UnitFactory.create_destroyer(position, hull_number=21)
     assert destroyer.attributes.unit_type == UnitType.DESTROYER
     assert destroyer.attributes.name == "DD-21"
+    assert destroyer.attributes.max_speed.value == 35.0  # Fletcher-class speed
     
     cruiser = UnitFactory.create_cruiser(position, hull_number=35)
     assert cruiser.attributes.unit_type == UnitType.CRUISER
     assert cruiser.attributes.name == "CA-35"
+    assert cruiser.attributes.max_speed.value == 33.0  # Baltimore-class speed
     
     battleship = UnitFactory.create_battleship(position, hull_number=63)
     assert battleship.attributes.unit_type == UnitType.BATTLESHIP
     assert battleship.attributes.name == "BB-63"
+    assert battleship.attributes.max_speed.value == 28.0  # Iowa-class speed
     
     carrier = UnitFactory.create_carrier(position, hull_number=6)
     assert carrier.attributes.unit_type == UnitType.CARRIER
     assert carrier.attributes.name == "CV-6"
+    assert carrier.attributes.max_speed.value == 33.0  # Essex-class speed
     
     fighter = UnitFactory.create_fighter(position, tail_number=201)
     assert fighter.attributes.unit_type == UnitType.FIGHTER
     assert fighter.attributes.name == "VF-201"
+    assert fighter.attributes.max_speed.value == 280.0  # F6F Hellcat speed
     
     dive_bomber = UnitFactory.create_dive_bomber(position, tail_number=3)
     assert dive_bomber.attributes.unit_type == UnitType.DIVE_BOMBER
     assert dive_bomber.attributes.name == "VB-3"
+    assert dive_bomber.attributes.max_speed.value == 240.0  # SBD Dauntless speed
     
     torpedo_bomber = UnitFactory.create_torpedo_bomber(position, tail_number=8)
     assert torpedo_bomber.attributes.unit_type == UnitType.TORPEDO_BOMBER
     assert torpedo_bomber.attributes.name == "VT-8"
+    assert torpedo_bomber.attributes.max_speed.value == 220.0  # TBF Avenger speed
     
     transport = UnitFactory.create_transport(position, hull_number=15)
     assert transport.attributes.unit_type == UnitType.TRANSPORT
     assert transport.attributes.name == "AP-15"
-    assert transport.attributes.max_speed == 20.0  # Verify transport-specific stats
+    assert transport.attributes.max_speed.value == 16.0  # Liberty ship speed
     
     base = UnitFactory.create_base(position, base_number=7)
     assert base.attributes.unit_type == UnitType.BASE
     assert base.attributes.name == "NB-7"
-    assert base.attributes.max_speed == 0.0  # Verify base is stationary
+    assert base.attributes.max_speed.value == 0.0  # Stationary
 
 @pytest.mark.unit
 def test_unit_specs_completeness() -> None:
@@ -111,10 +123,31 @@ def test_unit_specs_completeness() -> None:
     for unit_type in UnitType:
         assert unit_type in UnitFactory.UNIT_SPECS
         specs = UnitFactory.UNIT_SPECS[unit_type]
-        assert isinstance(specs.max_speed, float)
+        assert isinstance(specs.max_speed, NauticalMiles)
         assert isinstance(specs.max_health, float)
         assert isinstance(specs.max_fuel, float)
         assert isinstance(specs.name_prefix, str)
+
+@pytest.mark.unit
+def test_speed_operations() -> None:
+    """Test speed-related operations on units."""
+    position = Position(x=0.0, y=0.0)
+    destroyer = UnitFactory.create_destroyer(position)
+    
+    # Test initial speed
+    assert destroyer.attributes.current_speed.value == 0.0
+    
+    # Test setting speed
+    new_speed = NauticalMiles(20.0)
+    destroyer.set_speed(new_speed)
+    assert destroyer.attributes.current_speed == new_speed
+    
+    # Test setting invalid speeds
+    with pytest.raises(ValueError):
+        destroyer.set_speed(NauticalMiles(-5.0))  # Negative speed
+    
+    with pytest.raises(ValueError):
+        destroyer.set_speed(NauticalMiles(40.0))  # Exceeds max speed
 
 @pytest.mark.unit
 def test_transport_specifications() -> None:
@@ -122,7 +155,7 @@ def test_transport_specifications() -> None:
     position = Position(x=0.0, y=0.0)
     transport = UnitFactory.create_transport(position)
     
-    assert transport.attributes.max_speed == 20.0  # Slower than combat ships
+    assert transport.attributes.max_speed.value == 16.0  # Liberty ship speed
     assert transport.attributes.max_health == 80.0  # Less armored
     assert transport.attributes.max_fuel == 1800.0  # Large fuel capacity
     assert transport.attributes.name.startswith("AP")
@@ -133,7 +166,7 @@ def test_base_specifications() -> None:
     position = Position(x=0.0, y=0.0)
     base = UnitFactory.create_base(position)
     
-    assert base.attributes.max_speed == 0.0  # Stationary
+    assert base.attributes.max_speed.value == 0.0  # Stationary
     assert base.attributes.max_health == 500.0  # Very durable
     assert base.attributes.max_fuel == 5000.0  # Large fuel storage
     assert base.attributes.name.startswith("NB") 
