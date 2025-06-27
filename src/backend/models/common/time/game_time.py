@@ -4,6 +4,7 @@ Game time representation and calculations.
 This module provides classes for working with time in the game world:
 - GameTime: A specific point in game time
 - GameDuration: A duration or interval of game time
+- GameTimeManager: Manages game time progression
 
 The game time system supports:
 - Time scale factors (game time can run faster than real time)
@@ -159,4 +160,46 @@ class GameTime:
     
     def __str__(self) -> str:
         """Convert to string using ISO format."""
-        return self.to_datetime().isoformat() 
+        return self.to_datetime().isoformat()
+
+@dataclass
+class GameTimeManager:
+    """
+    Manages game time progression.
+    
+    This class is responsible for:
+    - Tracking current game time
+    - Advancing time by specified durations
+    - Providing time-related utilities
+    
+    Note: Time rate management is handled by the game state manager,
+    which uses this class to advance time appropriately.
+    """
+    _current_time: GameTime
+    
+    def __init__(self, start_time: Optional[GameTime] = None) -> None:
+        """
+        Initialize the time manager.
+        
+        Args:
+            start_time: Initial game time (defaults to current UTC time if None)
+        """
+        self._current_time = start_time if start_time is not None else GameTime.now()
+    
+    @property
+    def time_now(self) -> GameTime:
+        """Get the current game time."""
+        return self._current_time
+    
+    def advance_time(self, duration: GameDuration) -> GameTime:
+        """
+        Advance the game time by the specified duration.
+        
+        Args:
+            duration: Amount of time to advance
+            
+        Returns:
+            The new game time after advancement
+        """
+        self._current_time = self._current_time + duration
+        return self._current_time 

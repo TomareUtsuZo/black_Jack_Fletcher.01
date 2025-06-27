@@ -8,13 +8,15 @@ throughout the game, including:
 - Time intervals and durations
 - Time zone handling
 - Time-based calculations and conversions
+- Time progression management
 """
 
-from .game_time import GameTime, GameDuration
+from .game_time import GameTime, GameDuration, GameTimeManager
 from .time_zone import GameTimeZone
 
 __all__ = [
     'GameTime',
     'GameDuration',
     'GameTimeZone',
+    'GameTimeManager',
 ] 
