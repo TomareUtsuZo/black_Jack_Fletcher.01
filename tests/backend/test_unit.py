@@ -2,8 +2,9 @@ import pytest
 from typing import Optional
 from uuid import UUID, uuid4
 
+from src.backend.models.common import Position
 from src.backend.models.units import Unit, UnitAttributes
-from src.backend.models.units.types import Position, UnitType
+from src.backend.models.units.types import UnitType
 from src.backend.models.units import UnitModule
 
 class TestUnit:

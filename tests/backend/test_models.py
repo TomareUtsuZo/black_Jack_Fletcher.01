@@ -3,7 +3,8 @@ Tests for the game models type definitions.
 """
 from typing import Dict, Any, cast
 import pytest
-from src.backend.models import Position, PlayerState, GameState
+from src.backend.models.common import Position
+from src.backend.models import PlayerState, GameState
 
 @pytest.mark.unit
 def test_position_type_creation(sample_position: Dict[str, int]) -> None:

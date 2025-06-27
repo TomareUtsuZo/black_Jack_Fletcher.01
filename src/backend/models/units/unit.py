@@ -1,8 +1,10 @@
-from dataclasses import dataclass
+"""Unit module containing the core Unit class."""
+
+from dataclasses import dataclass, field
+from src.backend.models.common import Position
 from typing import Dict, Optional, Protocol
 from uuid import UUID, uuid4
 
-from .types.position import Position
 from .types.unit_type import UnitType
 
 class UnitModule(Protocol):
