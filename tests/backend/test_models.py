@@ -8,10 +8,30 @@ from src.backend.models import PlayerState, GameState
 
 @pytest.mark.unit
 def test_position_type_creation(sample_position: Dict[str, int]) -> None:
-    """Test that Position TypedDict can be created with correct types."""
-    position: Position = {"x": sample_position["x"], "y": sample_position["y"]}
-    assert isinstance(position["x"], int)
-    assert isinstance(position["y"], int)
+    """Test that Position can be created with correct types."""
+    position = Position(x=sample_position["x"], y=sample_position["y"])
+    assert isinstance(position.x, int)
+    assert isinstance(position.y, int)
+
+@pytest.mark.unit
+def test_position_utility_methods() -> None:
+    """Test Position's utility methods."""
+    pos1 = Position(x=0.0, y=0.0)
+    pos2 = Position(x=3.0, y=4.0)
+    
+    # Test distance calculation
+    assert pos1.distance_to(pos2) == 5.0
+    
+    # Test tuple conversion
+    assert pos1.to_tuple() == (0.0, 0.0)
+    
+    # Test from_tuple creation
+    pos3 = Position.from_tuple((1.0, 2.0))
+    assert pos3.x == 1.0
+    assert pos3.y == 2.0
+    
+    # Test string representation
+    assert str(pos1) == "Position(x=0.0, y=0.0)"
 
 @pytest.mark.unit
 def test_player_state_type_creation(sample_player: Dict[str, str]) -> None:
