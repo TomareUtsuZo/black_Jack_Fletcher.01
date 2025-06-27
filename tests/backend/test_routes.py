@@ -38,4 +38,4 @@ def test_join_game_route(client: FlaskClient) -> None:
     response = client.post(f'/api/game/{game_id}/join')
     assert response.status_code == 200
     data = response.get_json()
-    assert data == {'status': 'joined'} 
+    assert data == {'status': 'joined'}
