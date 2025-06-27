@@ -1,10 +1,23 @@
 """
-Geometry package providing core geometric types and calculations.
+Geometry package providing core geometric calculations and types.
 
-This package contains fundamental geometric constructs used throughout the game,
-separated from specific game logic to maintain clean architecture.
+This package provides fundamental geometric types and calculations used
+throughout the game, including:
+
+- Basic 2D positions
+- Geographic positions (lat/lon)
+- Distance calculations (Euclidean and Haversine)
+- Nautical measurements
 """
 
 from .position import Position
+from .nautical_miles import NauticalMiles
+from .haversine import GeoPosition, calculate_haversine_distance, bearing_between
 
-__all__ = ['Position'] 
+__all__ = [
+    'Position',
+    'NauticalMiles',
+    'GeoPosition',
+    'calculate_haversine_distance',
+    'bearing_between'
+] 
