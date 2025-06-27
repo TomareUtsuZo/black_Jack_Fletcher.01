@@ -11,13 +11,14 @@ from typing import Dict, Optional, ClassVar
 from uuid import UUID
 
 from src.backend.models.common import Position
+from src.backend.models.common.geometry.nautical_miles import NauticalMiles
 from src.backend.models.units import Unit
 from src.backend.models.units.types import UnitType
 
 @dataclass(frozen=True)
 class UnitTemplate:
     """Standard template for unit type specifications"""
-    max_speed: float
+    max_speed: NauticalMiles  # Maximum speed in knots
     max_health: float
     max_fuel: float
     name_prefix: str
@@ -28,58 +29,58 @@ class UnitFactory:
     # Standard specifications for each unit type
     UNIT_SPECS: ClassVar[Dict[UnitType, UnitTemplate]] = {
         UnitType.DESTROYER: UnitTemplate(
-            max_speed=35.0,
+            max_speed=NauticalMiles(35.0),  # Fletcher-class max speed
             max_health=100.0,
             max_fuel=1000.0,
             name_prefix="DD"
         ),
         UnitType.CRUISER: UnitTemplate(
-            max_speed=33.0,
+            max_speed=NauticalMiles(33.0),  # Baltimore-class max speed
             max_health=150.0,
             max_fuel=1200.0,
             name_prefix="CA"
         ),
         UnitType.BATTLESHIP: UnitTemplate(
-            max_speed=30.0,
+            max_speed=NauticalMiles(28.0),  # Iowa-class max speed
             max_health=250.0,
             max_fuel=1500.0,
             name_prefix="BB"
         ),
         UnitType.CARRIER: UnitTemplate(
-            max_speed=33.0,
+            max_speed=NauticalMiles(33.0),  # Essex-class max speed
             max_health=175.0,
             max_fuel=2000.0,
             name_prefix="CV"
         ),
         UnitType.FIGHTER: UnitTemplate(
-            max_speed=150.0,
+            max_speed=NauticalMiles(280.0),  # F6F Hellcat max speed
             max_health=50.0,
             max_fuel=300.0,
             name_prefix="VF"
         ),
         UnitType.DIVE_BOMBER: UnitTemplate(
-            max_speed=120.0,
+            max_speed=NauticalMiles(240.0),  # SBD Dauntless max speed
             max_health=60.0,
             max_fuel=400.0,
             name_prefix="VB"
         ),
         UnitType.TORPEDO_BOMBER: UnitTemplate(
-            max_speed=110.0,
+            max_speed=NauticalMiles(220.0),  # TBF Avenger max speed
             max_health=70.0,
             max_fuel=450.0,
             name_prefix="VT"
         ),
         UnitType.TRANSPORT: UnitTemplate(
-            max_speed=20.0,  # Slower than combat ships
-            max_health=80.0,  # Less armored
-            max_fuel=1800.0,  # Large fuel capacity for long-range operations
-            name_prefix="AP"  # Military designation for transport ships
+            max_speed=NauticalMiles(16.0),  # Liberty ship max speed
+            max_health=80.0,
+            max_fuel=1800.0,
+            name_prefix="AP"
         ),
         UnitType.BASE: UnitTemplate(
-            max_speed=0.0,  # Stationary
-            max_health=500.0,  # Very durable
-            max_fuel=5000.0,  # Large fuel storage
-            name_prefix="NB"  # Naval Base
+            max_speed=NauticalMiles(0.0),  # Stationary
+            max_health=500.0,
+            max_fuel=5000.0,
+            name_prefix="NB"
         ),
     }
     
