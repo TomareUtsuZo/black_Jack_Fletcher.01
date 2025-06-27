@@ -10,20 +10,9 @@ class Position(TypedDict):
     x: int
     y: int
 
-class EntityState(TypedDict):
-    id: str
-    position: Position
-    state: str
-
 class PlayerState(TypedDict):
     id: str
-    resources: Dict[str, int]
-    entities: List[EntityState]
-    status: str
 
 class GameState(TypedDict):
     id: str
     players: Dict[str, PlayerState]
-    current_turn: str
-    phase: str
-    timestamp: float 
