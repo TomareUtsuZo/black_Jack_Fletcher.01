@@ -62,11 +62,16 @@ class Bearing:
         return Bearing(self._value - other)
     
     def __eq__(self, other: object) -> bool:
-        """Check if two bearings are equal."""
+        """
+        Check if two bearings are equal.
+        
+        Uses a small tolerance (1e-6) for float comparison to handle
+        rounding errors and floating point imprecision.
+        """
         if not isinstance(other, Bearing):
             return NotImplemented
-        # Compare normalized values with small tolerance for float comparison
-        return abs(self._value - other._value) < 1e-10
+        # Use a reasonable epsilon for float comparison
+        return abs(self._value - other._value) < 1e-6
     
     @staticmethod
     def normalize_degrees(degrees: float) -> float:
@@ -83,7 +88,7 @@ class Bearing:
         """Create a bearing from an angle in radians."""
         return Bearing(math.degrees(radians))
     
-    def relative_to(self, reference: 'Bearing') -> 'Bearing':
+    def relative_to(self, reference: 'Bearing') -> float:
         """
         Calculate relative bearing from a reference bearing.
         
@@ -91,18 +96,20 @@ class Bearing:
             reference: The reference bearing to calculate from
             
         Returns:
-            Relative bearing where:
+            Relative bearing in degrees where:
             - 0° is straight ahead
-            - +90° is to the right
-            - -90° is to the left
+            - +90° is to the right (starboard)
+            - -90° is to the left (port)
             - 180° or -180° is directly behind
         """
-        relative = self._value - reference._value
-        if relative > 180:
-            relative -= 360
-        elif relative <= -180:
-            relative += 360
-        return Bearing(relative)
+        # Calculate the raw difference
+        diff = self._value - reference._value
+        # Normalize to [-180, 180)
+        if diff > 180:
+            diff -= 360
+        elif diff <= -180:
+            diff += 360
+        return diff
     
     def reciprocal(self) -> 'Bearing':
         """Get the reciprocal (opposite) bearing."""
