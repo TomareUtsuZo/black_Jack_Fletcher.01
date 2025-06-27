@@ -1,35 +1,74 @@
 version: '3'
 
 tasks:
+  check-venv:
+    internal: true
+    cmds:
+      - |
+        if ($null -eq $env:VIRTUAL_ENV) {
+            Write-Host "Virtual environment not activated. Run venv/Scripts/activate first." -ForegroundColor Red
+            exit 1
+        }
+
   setup:
-    desc: 'Set up the development environment for a coding session'
+    desc: Set up development environment
     cmds:
       - python -m venv venv
       - powershell -File ./setup_env.ps1
       - venv\Scripts\Activate.ps1
 
   run-flask:
-    desc: 'Run the Flask application'
+    desc: Run Flask application
     cmds:
-      - powershell -Command "venv\Scripts\activate; python -m backend.src.app"
+      - python -m backend.src.app
 
-  test-backend:
-    desc: 'Run all backend tests'
+  test:
+    desc: Run all tests
     cmds:
-      - powershell -Command ".\.venv\Scripts\Activate.ps1; python -m unittest discover -s backend/tests -p 'test_*.py' -v"
+      - python -m pytest tests -v --cov=src --cov-report=term-missing --mypy
 
-  test-functional:
-    desc: 'Run functional tests'
+  test-unit:
+    desc: Run unit tests
     cmds:
-      - powershell -Command ".\.venv\Scripts\Activate.ps1; python -m unittest discover -s backend/tests_functional -p 'test_*.py' -v"
+      - python -m pytest tests/backend -v
 
-  test-gamestate:
-    desc: 'Run only game state related tests'
+  test-integration:
+    desc: Run integration tests
     cmds:
-      - powershell -Command ".\.venv\Scripts\Activate.ps1; python -m unittest backend/tests/test_state_manager.py backend/tests/test_game_state_service_singleton.py backend/tests/test_game_state_service_modular.py backend/tests/test_modular_game_state_service.py backend/tests/test_faction_functionality.py -v"
+      - python -m pytest tests/integration -v
 
-  test-gamelogic:
-    desc: 'Run only game logic related tests (unit and time)'
+  test-types:
+    desc: Run type checking
     cmds:
-      - powershell -Command ".\.venv\Scripts\Activate.ps1; python -m unittest backend/tests/test_unit.py backend/tests/test_game_time.py -v"
+      - python -m mypy src tests
+
+  test-coverage:
+    desc: Generate coverage report
+    cmds:
+      - python -m pytest tests -v --cov=src --cov-report=html
+      - echo "Coverage report generated in htmlcov/index.html"
+
+  test-watch:
+    desc: Run tests in watch mode
+    cmds:
+      - python -m pytest-watch tests -- -v
+
+  test-failed:
+    desc: Rerun failed tests
+    cmds:
+      - python -m pytest tests -v --last-failed
+
+  lint:
+    desc: Run linting checks
+    cmds:
+      - task: test-types
+      - python -m flake8 src tests
+      - python -m black --check src tests
+      - python -m isort --check-only src tests
+
+  format:
+    desc: Format code
+    cmds:
+      - python -m black src tests
+      - python -m isort src tests
 

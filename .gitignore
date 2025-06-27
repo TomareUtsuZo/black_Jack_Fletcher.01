@@ -109,3 +109,7 @@ dist/
 
 # Project specific
 game.egg-info/
+
+# Test coverage
+htmlcov/
+.coverage
