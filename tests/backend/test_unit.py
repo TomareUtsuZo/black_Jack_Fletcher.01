@@ -3,6 +3,7 @@ from typing import Optional
 from uuid import UUID, uuid4
 
 from src.backend.models.common import Position
+from src.backend.models.common.geometry.nautical_miles import NauticalMiles
 from src.backend.models.units import Unit, UnitAttributes
 from src.backend.models.units.types import UnitType
 from src.backend.models.units import UnitModule
@@ -17,7 +18,7 @@ class TestUnit:
             name="Test Destroyer",
             unit_type=UnitType.DESTROYER,
             position=Position(x=0.0, y=0.0),
-            max_speed=30.0,
+            max_speed=NauticalMiles(30.0),
             max_health=100.0,
             max_fuel=1000.0
         )
@@ -29,7 +30,7 @@ class TestUnit:
             name="Task Force Ship",
             unit_type=UnitType.CRUISER,
             position=Position(x=10.0, y=10.0),
-            max_speed=25.0,
+            max_speed=NauticalMiles(25.0),
             max_health=150.0,
             max_fuel=1200.0,
             task_force="TF-38"
@@ -42,7 +43,7 @@ class TestUnit:
         assert basic_unit.attributes.position == Position(0.0, 0.0)
         assert basic_unit.attributes.current_health == basic_unit.attributes.max_health
         assert basic_unit.attributes.current_fuel == basic_unit.attributes.max_fuel
-        assert basic_unit.attributes.current_speed == 0.0
+        assert basic_unit.attributes.current_speed.value == 0.0
         assert basic_unit.attributes.destination is None
         assert basic_unit.attributes.task_force_assigned_to is None
         assert isinstance(basic_unit.attributes.unit_id, UUID)
@@ -97,6 +98,24 @@ class TestUnit:
         another_position = Position(200.0, 200.0)
         basic_unit.set_destination(another_position)
         assert basic_unit.attributes.destination == another_position
+
+    def test_unit_speed_setting(self, basic_unit: Unit) -> None:
+        """Test setting unit speed"""
+        # Test initial speed
+        assert basic_unit.attributes.current_speed.value == 0.0
+        
+        # Test setting valid speed
+        new_speed = NauticalMiles(20.0)
+        basic_unit.set_speed(new_speed)
+        assert basic_unit.attributes.current_speed == new_speed
+        
+        # Test setting negative speed
+        with pytest.raises(ValueError):
+            basic_unit.set_speed(NauticalMiles(-5.0))
+        
+        # Test exceeding max speed
+        with pytest.raises(ValueError):
+            basic_unit.set_speed(NauticalMiles(35.0))
 
     def test_task_force_assignment(self, basic_unit: Unit) -> None:
         """Test assigning unit to task forces"""
