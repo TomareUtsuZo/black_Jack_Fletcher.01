@@ -1,107 +1,98 @@
 # Test Planning Document
 
-## Overview
-This document outlines our testing strategy, focusing on behavior-driven testing that verifies functionality without coupling to implementation details. Tests are organized following our MVVM architecture.
+## Current Implementation Status
 
-## 1. Model Layer Tests
+### 1. Infrastructure (✓ Implemented)
+- Pytest configuration with test discovery
+- Mypy integration for type checking
+- Coverage reporting (currently at 97%)
+- Test markers for categorization (unit, integration, e2e)
 
-### Game State Tests
-- **test_game_initialization**
-  - Why: Ensures game starts with correct initial state
+### 2. Model Layer Tests (✓ Implemented)
+- **test_position_type_creation**
+  - Status: ✓ Implemented
+  - Verifies: Position TypedDict with x,y coordinates
 
+- **test_player_state_type_creation**
+  - Status: ✓ Implemented
+  - Verifies: PlayerState TypedDict with id
 
-### Unit Object Tests
-- **test_unit_creation**
-    When units are defined.
+- **test_game_state_type_creation**
+  - Status: ✓ Implemented
+  - Verifies: GameState TypedDict with id and players dictionary
 
-- **test_unit_movement**
-    when units are defined.
-  - Why: Validates unit movement mechanics
-  
+### 3. Route Layer Tests (✓ Implemented)
+- **test_index_route**
+  - Status: ✓ Implemented
+  - Verifies: Root route returns index.html
 
-- **test_unit_combat**
-    when units are defined.
-  - Why: Ensures combat mechanics work correctly
-  - Verifies: Damage calculation, health reduction, ...
+- **test_get_game_state_route**
+  - Status: ✓ Implemented
+  - Verifies: Game state endpoint returns correct format
 
+- **test_create_game_route**
+  - Status: ✓ Implemented
+  - Verifies: Game creation endpoint functions
 
-## 2. ViewModel Layer Tests
+- **test_join_game_route**
+  - Status: ✓ Implemented
+  - Verifies: Game joining endpoint functions
 
-### State Transformation Tests
-- **test_game_state_to_view_transformation**
-  - Why: Validates data transformation for views
-  - Verifies: Correct format of view data, all necessary fields present
+### 4. App Configuration Tests (✓ Implemented)
+- **test_app_configuration**
+  - Status: ✓ Implemented
+  - Verifies: Flask app and SocketIO setup
 
-- **test_command_handling**
-    when frontend to backend commands begin to be defined.
-  - Why: Ensures commands are properly processed
-  - Verifies: Command validation, state updates, error handling
+- **test_blueprint_registration**
+  - Status: ✓ Implemented
+  - Verifies: Routes are properly registered
 
-### WebSocket Communication Tests
-- **test_websocket_state_updates**
-  - Why: Validates real-time communication
-  - Verifies: State broadcast, client synchronization
+## Planned Tests (To Be Implemented)
 
-- **test_connection_handling**
-  - Why: Ensures robust connection management
-  - Verifies: Reconnection, state recovery, session management
+### 1. Model Layer Tests
+- **Unit Object Tests**
+    - When units are defined:
+      - Unit creation
+      - Unit movement
+      - Unit combat mechanics
 
-## 3. View Layer Tests
+### 2. ViewModel Layer Tests
+- **State Transformation Tests**
+    - When frontend to backend commands begin to be defined:
+      - Command validation
+      - State updates
+      - Error handling
 
-### UI Component Tests
-- **test_game_board_rendering**
-    when game objects are defined.
-  - Why: Ensures correct visual representation
-  - Verifies: Unit placement, ocean features display, lat/long alignment
+### 3. View Layer Tests
+- **Game Board Tests**
+    - When game objects are defined:
+      - Unit placement
+      - Ocean features display
+      - Lat/long alignment
 
-- **test_user_interaction**
-    when object interaction is defined.
-  - Why: Validates user input handling
-  - Verifies: Click handling, drag-and-drop, keyboard shortcuts (when impliemnted)
+- **User Interaction Tests**
+    - When object interaction is defined:
+      - Click handling
+      - Drag-and-drop
+      - Keyboard shortcuts (when implemented)
 
-### Visual State Tests
-- **test_visual_feedback**
-  - Why: Ensures clear user feedback
-  - Verifies: Hover effects, selection indicators, action highlights
+### 4. Integration Tests
+- **Game Flow Tests**
+    - When win conditions are defined:
+      - Complete game cycle
+      - Win condition verification
 
-## 4. Integration Tests
+- **Multiplayer Tests**
+    - When multiplayer is setup:
+      - Player interactions
+      - Turn synchronization
 
-### End-to-End Game Flow
-- **test_complete_game_cycle**
-    when when conditions are defined.
-  - Why: Validates full game functionality
-  - Verifies: Start to finish gameplay, win conditions
-
-- **test_multiplayer_interaction**
-    when multiplayer is setup.
-  - Why: Ensures multiplayer functionality
-  - Verifies: Player interactions, turn synchronization
-
-### API Integration
-- **test_api_endpoints**
-  - Why: Validates API functionality
-  - Verifies: Request/response handling, error cases
-
-## 5. Performance Tests
-
-### Load Testing
-
-- **test_websocket_scalability**
-  - Why: Ensures real-time communication scales
-  - Verifies: Message throughput, latency under load
-
-## 6. Security Tests
-
-### Authentication Tests
-- **test_user_authentication**
-    when users are defined.
-  - Why: Validates security measures
-  - Verifies: Login, session management, permissions
-
-### Input Validation
-- **test_input_sanitization**
-  - Why: Prevents injection attacks
-  - Verifies: Input validation, error handling
+### 5. Authentication Tests
+- **User Authentication**
+    - When users are defined:
+      - Login process
+      - Session management
+      - Permissions
 
 ## Test Implementation Guidelines
 
@@ -132,6 +123,7 @@ def test_feature_behavior():
 ## Continuous Integration
 - All tests must pass before merge
 - Coverage requirements: 90% minimum
+- Type checking must pass
 - Performance test thresholds must be met
 
 ## Test Maintenance
@@ -140,4 +132,4 @@ def test_feature_behavior():
 - Keep test documentation current
 
 ---
-Note: This test plan should evolve with the project. Add new test cases as features are added and update existing tests as requirements change.
+Note: This test plan evolves with the project. Tests are implemented as features are developed, following the "when defined" triggers noted in the planned tests.
