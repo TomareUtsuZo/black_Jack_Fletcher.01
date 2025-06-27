@@ -12,6 +12,7 @@ from typing import Optional, Tuple, NamedTuple
 
 from .nautical_miles import NauticalMiles
 from .position import Position
+from .bearing import Bearing
 
 # --- Data Types ---
 class ReducedLatitude(NamedTuple):
@@ -23,8 +24,8 @@ class ReducedLatitude(NamedTuple):
 class VincentyResult(NamedTuple):
     """Results from Vincenty's formulae calculations."""
     distance: NauticalMiles  # Distance in nautical miles
-    initial_bearing: float  # Initial bearing in degrees
-    final_bearing: float  # Final bearing in degrees
+    initial_bearing: Bearing  # Initial bearing
+    final_bearing: Bearing   # Final bearing
 
 @dataclass(frozen=True)
 class GeoPosition:
@@ -219,36 +220,34 @@ def calculate_initial_bearing(
     sin_lambda: float,
     cos_lambda: float,
     sin_alpha: float
-) -> float:
+) -> Bearing:
     """Calculate initial bearing."""
     y = sin_lambda * reduced_lat2.cos_U
     x = reduced_lat1.cos_U * reduced_lat2.sin_U - reduced_lat1.sin_U * reduced_lat2.cos_U * cos_lambda
     
-    bearing = normalize_degrees(radians_to_degrees(math.atan2(y, x)))
-    return bearing
+    return Bearing(math.degrees(math.atan2(y, x)))
 
 def calculate_final_bearing(
     reduced_lat1: ReducedLatitude,
     sin_sigma: float,
     cos_sigma: float,
     sin_alpha: float
-) -> float:
+) -> Bearing:
     """Calculate final bearing."""
     cos_alpha = math.sqrt(1 - sin_alpha * sin_alpha)
     y = reduced_lat1.cos_U * sin_alpha
     x = -reduced_lat1.sin_U * cos_sigma + reduced_lat1.cos_U * sin_sigma * cos_alpha
     
-    bearing = normalize_degrees(radians_to_degrees(math.atan2(y, x)))
-    return bearing
+    return Bearing(math.degrees(math.atan2(y, x)))
 
 # --- Main calculation function ---
 def calculate_vincenty_full(pos1: GeoPosition, pos2: GeoPosition) -> VincentyResult:
     """Calculate distance and bearings between two points using Vincenty's formulae."""
     # Step 1: Convert to radians
-    lat1 = degrees_to_radians(pos1.latitude)
-    lon1 = degrees_to_radians(pos1.longitude)
-    lat2 = degrees_to_radians(pos2.latitude)
-    lon2 = degrees_to_radians(pos2.longitude)
+    lat1 = math.radians(pos1.latitude)
+    lon1 = math.radians(pos1.longitude)
+    lat2 = math.radians(pos2.latitude)
+    lon2 = math.radians(pos2.longitude)
     
     # Step 2: Calculate reduced latitudes
     reduced_lat1 = calculate_reduced_latitude(lat1)
@@ -270,7 +269,7 @@ def calculate_vincenty_full(pos1: GeoPosition, pos2: GeoPosition) -> VincentyRes
         )
         
         if sin_sigma == 0:
-            return VincentyResult(NauticalMiles(0), 0.0, 0.0)
+            return VincentyResult(NauticalMiles(0), Bearing(0), Bearing(0))
         
         # Step 4c: Calculate alpha components
         sin_alpha, cos_sq_alpha = calculate_alpha_components(
@@ -301,14 +300,14 @@ def calculate_vincenty_full(pos1: GeoPosition, pos2: GeoPosition) -> VincentyRes
             
             # Step 6: Calculate bearings using standard great circle formula
             # Account for convergence of meridians by using reduced latitudes
-            y = sin_lambda * reduced_lat2.cos_U
-            x = reduced_lat1.cos_U * reduced_lat2.sin_U - reduced_lat1.sin_U * reduced_lat2.cos_U * cos_lambda
-            initial_bearing = normalize_degrees(radians_to_degrees(math.atan2(y, x)))
+            initial_bearing = calculate_initial_bearing(
+                reduced_lat1, reduced_lat2, sin_lambda, cos_lambda, sin_alpha
+            )
             
             # Final bearing is initial bearing from point 2 to point 1 + 180°
-            y = -sin_lambda * reduced_lat1.cos_U
-            x = reduced_lat2.cos_U * reduced_lat1.sin_U - reduced_lat2.sin_U * reduced_lat1.cos_U * cos_lambda
-            final_bearing = normalize_degrees(radians_to_degrees(math.atan2(y, x)) + 180)
+            final_bearing = calculate_final_bearing(
+                reduced_lat1, sin_sigma, cos_sigma, sin_alpha
+            )
             
             return VincentyResult(distance, initial_bearing, final_bearing)
         
@@ -347,7 +346,7 @@ def calculate_haversine_distance(pos1: Position, pos2: Position, scale_factor: f
     """
     return calculate_vincenty_distance(pos1, pos2, scale_factor)
 
-def bearing_between(pos1: Position, pos2: Position, scale_factor: float = 1.0) -> float:
+def bearing_between(pos1: Position, pos2: Position, scale_factor: float = 1.0) -> Bearing:
     """
     Calculate the initial bearing from pos1 to pos2 using Vincenty's formulae.
     

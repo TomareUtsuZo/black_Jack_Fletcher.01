@@ -6,18 +6,33 @@ throughout the game, including:
 
 - Basic 2D positions
 - Geographic positions (lat/lon)
-- Distance calculations (Euclidean and Haversine)
+- Distance calculations (using Vincenty's formulae)
+- Bearing calculations and cardinal directions
 - Nautical measurements
 """
 
 from .position import Position
 from .nautical_miles import NauticalMiles
-from .haversine import GeoPosition, calculate_haversine_distance, bearing_between
+from .vincenty import GeoPosition, calculate_haversine_distance, bearing_between
+from .bearing import (
+    Bearing,
+    CardinalDirection,
+    NORTH,
+    EAST,
+    SOUTH,
+    WEST,
+)
 
 __all__ = [
     'Position',
     'NauticalMiles',
     'GeoPosition',
     'calculate_haversine_distance',
-    'bearing_between'
+    'bearing_between',
+    'Bearing',
+    'CardinalDirection',
+    'NORTH',
+    'EAST',
+    'SOUTH',
+    'WEST',
 ] 

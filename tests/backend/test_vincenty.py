@@ -1,5 +1,5 @@
 """
-Tests for the haversine distance calculation functionality.
+Tests for the Vincenty distance calculation functionality.
 
 These tests verify the accuracy of distance and bearing calculations between
 geographic positions, with a focus on major international airports with
@@ -9,12 +9,13 @@ well-documented coordinates and distances.
 import math
 import pytest
 from typing import NoReturn
-from src.backend.models.common.geometry.haversine import (
+from src.backend.models.common.geometry.vincenty import (
     calculate_haversine_distance,
     bearing_between
 )
 from src.backend.models.common.geometry.position import Position
 from src.backend.models.common.geometry.nautical_miles import NauticalMiles
+from src.backend.models.common.geometry.bearing import Bearing
 
 # Major international airport coordinates (using game Position)
 # Scale factor is 1.0 (1 game unit = 1 degree)
@@ -57,11 +58,11 @@ def test_airport_bearings() -> None:
     """
     # SFO to JFK (Initial bearing: ~70 degrees)
     bearing = bearing_between(SFO, JFK, SCALE_FACTOR)
-    assert abs(bearing - 70) < 1  # Within 1 degree
+    assert abs(bearing.degrees - 70) < 1  # Within 1 degree
 
     # SFO to LAX (Initial bearing: ~137.5 degrees)
     bearing = bearing_between(SFO, LAX, SCALE_FACTOR)
-    assert abs(bearing - 137.5) < 1  # Within 1 degree
+    assert abs(bearing.degrees - 137.5) < 1  # Within 1 degree
 
 def test_symmetrical_distances() -> None:
     """Test that distances are symmetrical (A to B equals B to A)."""
@@ -88,12 +89,12 @@ def test_bearing_edge_cases() -> None:
     # North to South (should be 180 degrees)
     north = Position(x=0, y=10)
     south = Position(x=0, y=0)
-    assert bearing_between(north, south, SCALE_FACTOR) == pytest.approx(180, abs=1)
+    assert bearing_between(north, south, SCALE_FACTOR).degrees == pytest.approx(180, abs=1)
     
     # West to East (should be 90 degrees)
     west = Position(x=0, y=0)
     east = Position(x=10, y=0)
-    assert bearing_between(west, east, SCALE_FACTOR) == pytest.approx(90, abs=1)
+    assert bearing_between(west, east, SCALE_FACTOR).degrees == pytest.approx(90, abs=1)
     
     # East to West (should be 270 degrees)
-    assert bearing_between(east, west, SCALE_FACTOR) == pytest.approx(270, abs=1) 
+    assert bearing_between(east, west, SCALE_FACTOR).degrees == pytest.approx(270, abs=1) 
