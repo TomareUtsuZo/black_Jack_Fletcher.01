@@ -13,9 +13,10 @@ The game time system supports:
 - Conversion to/from real time
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Union, Optional, ClassVar
+from typing import Union, Optional, ClassVar, Dict, Any
+from threading import Lock
 from .time_zone import GameTimeZone
 
 @dataclass(frozen=True)
@@ -77,6 +78,28 @@ class GameDuration:
             return self._seconds / divisor._seconds
         return GameDuration(self._seconds / divisor)
     
+    def __lt__(self, other: 'GameDuration') -> bool:
+        """Compare if this duration is less than another."""
+        return self._seconds < other._seconds
+    
+    def __le__(self, other: 'GameDuration') -> bool:
+        """Compare if this duration is less than or equal to another."""
+        return self._seconds <= other._seconds
+    
+    def __gt__(self, other: 'GameDuration') -> bool:
+        """Compare if this duration is greater than another."""
+        return self._seconds > other._seconds
+    
+    def __ge__(self, other: 'GameDuration') -> bool:
+        """Compare if this duration is greater than or equal to another."""
+        return self._seconds >= other._seconds
+    
+    def __eq__(self, other: object) -> bool:
+        """Compare if two durations are equal."""
+        if not isinstance(other, GameDuration):
+            return NotImplemented
+        return self._seconds == other._seconds
+    
     @classmethod
     def from_seconds(cls, seconds: float) -> 'GameDuration':
         """Create duration from seconds."""
@@ -107,27 +130,30 @@ class GameTime:
     for proper handling of local times in different game regions.
     
     The game time is always validated to ensure it falls within
-    the valid game time range (between GAME_START and GAME_END).
+    the valid game time range (between GAME_START and current UTC time).
     """
-    # Game time boundaries (Unix timestamps)
-    GAME_START: ClassVar[float] = datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp()
-    GAME_END: ClassVar[float] = datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp()
+    # Historical reference points as datetime objects
+    GAME_START: ClassVar[datetime] = datetime(1900, 1, 1, tzinfo=timezone.utc)
+    PEARL_HARBOR_ATTACK: ClassVar[datetime] = datetime(1941, 12, 7, 17, 48, tzinfo=timezone.utc)
     
-    _timestamp: float  # Unix timestamp in game time
+    _time: datetime  # The actual datetime object
     _time_zone: Optional[GameTimeZone] = None
     
     def __post_init__(self) -> None:
-        """Validate the timestamp is within game bounds."""
-        if not self.GAME_START <= self._timestamp <= self.GAME_END:
+        """Validate the time is within game bounds."""
+        if self._time.tzinfo is None:
+            raise ValueError("Game time must have timezone information")
+            
+        # Convert all times to UTC for comparison
+        game_time_utc = self._time.astimezone(timezone.utc)
+        current_utc = datetime.now(timezone.utc)
+            
+        # Compare using UTC datetimes to avoid recursion
+        if not (self.GAME_START <= game_time_utc <= current_utc):
             raise ValueError(
-                f"Game time must be between {datetime.fromtimestamp(self.GAME_START, timezone.utc)} "
-                f"and {datetime.fromtimestamp(self.GAME_END, timezone.utc)}"
+                f"Game time must be between {self.GAME_START.isoformat()} "
+                f"and {current_utc.isoformat()}"
             )
-    
-    @property
-    def timestamp(self) -> float:
-        """Get the Unix timestamp in game time."""
-        return self._timestamp
     
     @property
     def time_zone(self) -> Optional[GameTimeZone]:
@@ -136,18 +162,18 @@ class GameTime:
     
     def in_zone(self, zone: GameTimeZone) -> 'GameTime':
         """Get this time in a different time zone."""
-        return GameTime(self._timestamp, zone)
+        return GameTime(self._time, zone)
     
     def to_datetime(self) -> datetime:
-        """Convert to Python datetime."""
-        tz = timezone.utc if self._time_zone is None else self._time_zone.to_timezone()
-        return datetime.fromtimestamp(self._timestamp, tz)
+        """Get the underlying datetime object."""
+        if self._time_zone is not None:
+            return self._time.astimezone(self._time_zone.to_timezone())
+        return self._time
     
     def __add__(self, other: GameDuration) -> 'GameTime':
         """Add a duration to this time."""
-        new_timestamp = self._timestamp + other.seconds
-        # This will raise ValueError if the result is outside game bounds
-        return GameTime(new_timestamp, self._time_zone)
+        new_time = self._time + timedelta(seconds=other.seconds)
+        return GameTime(new_time, self._time_zone)
     
     def __sub__(self, other: Union[GameDuration, 'GameTime']) -> Union['GameTime', GameDuration]:
         """
@@ -156,15 +182,36 @@ class GameTime:
         Returns:
             - GameTime when subtracting a duration
             - GameDuration when subtracting another GameTime
-            
-        Raises:
-            ValueError: If subtracting a duration would result in a time outside game bounds
         """
         if isinstance(other, GameDuration):
-            new_timestamp = self._timestamp - other.seconds
-            # This will raise ValueError if the result is outside game bounds
-            return GameTime(new_timestamp, self._time_zone)
-        return GameDuration(self._timestamp - other._timestamp)
+            new_time = self._time - timedelta(seconds=other.seconds)
+            return GameTime(new_time, self._time_zone)
+        
+        # When subtracting two GameTimes, return the duration between them
+        delta = self._time - other._time
+        return GameDuration(delta.total_seconds())
+    
+    def __lt__(self, other: 'GameTime') -> bool:
+        """Compare if this time is earlier than another."""
+        return self._time < other._time
+    
+    def __le__(self, other: 'GameTime') -> bool:
+        """Compare if this time is earlier than or equal to another."""
+        return self._time <= other._time
+    
+    def __gt__(self, other: 'GameTime') -> bool:
+        """Compare if this time is later than another."""
+        return self._time > other._time
+    
+    def __ge__(self, other: 'GameTime') -> bool:
+        """Compare if this time is later than or equal to another."""
+        return self._time >= other._time
+    
+    def __eq__(self, other: object) -> bool:
+        """Compare if two times are equal."""
+        if not isinstance(other, GameTime):
+            return NotImplemented
+        return self._time == other._time
     
     @classmethod
     def from_datetime(cls, dt: datetime, time_zone: Optional[GameTimeZone] = None) -> 'GameTime':
@@ -180,7 +227,7 @@ class GameTime:
         """
         if dt.tzinfo is None:
             raise ValueError("datetime must have timezone information")
-        return cls(dt.timestamp(), time_zone)
+        return cls(dt, time_zone)
     
     @classmethod
     def now(cls, time_zone: Optional[GameTimeZone] = None) -> 'GameTime':
@@ -195,13 +242,22 @@ class GameTime:
     
     def strftime(self, format: str) -> str:
         """Format time according to format string."""
-        return self.to_datetime().strftime(format)
+        return self._time.strftime(format)
     
     def __str__(self) -> str:
         """Convert to string using ISO format."""
-        return self.to_datetime().isoformat()
+        return self._time.isoformat()
+    
+    @classmethod
+    def default_start_time(cls) -> 'GameTime':
+        """Get the default game start time (Pearl Harbor attack)."""
+        print("\nCreating default start time...")
+        print(f"Using Pearl Harbor attack time: {cls.PEARL_HARBOR_ATTACK.isoformat()}")
+        time = cls(cls.PEARL_HARBOR_ATTACK)
+        print(f"Created GameTime object with time: {time}")
+        return time
 
-@dataclass
+@dataclass(init=False)
 class GameTimeManager:
     """
     Manages game time progression.
@@ -213,22 +269,37 @@ class GameTimeManager:
     
     Note: Time rate management is handled by the game state manager,
     which uses this class to advance time appropriately.
+    
+    This class is thread-safe to handle concurrent access from the
+    scheduler thread and main thread.
     """
     _current_time: GameTime
+    _lock: Lock = field(default_factory=Lock, init=False)
     
     def __init__(self, start_time: Optional[GameTime] = None) -> None:
         """
         Initialize the time manager.
         
         Args:
-            start_time: Initial game time (defaults to current UTC time if None)
+            start_time: Initial game time (defaults to Pearl Harbor attack time if None)
         """
-        self._current_time = start_time if start_time is not None else GameTime.now()
+        print("\nInitializing GameTimeManager...")
+        self._lock = Lock()
+        
+        if start_time is not None:
+            print(f"Using provided start time: {start_time.to_datetime().isoformat()}")
+            self._current_time = start_time
+        else:
+            print("No start time provided, using Pearl Harbor attack time...")
+            default_time = GameTime.default_start_time()
+            print(f"Default start time set to: {default_time.to_datetime().isoformat()}")
+            self._current_time = default_time
     
     @property
     def time_now(self) -> GameTime:
         """Get the current game time."""
-        return self._current_time
+        with self._lock:
+            return self._current_time
     
     def advance_time(self, duration: GameDuration) -> GameTime:
         """
@@ -239,6 +310,17 @@ class GameTimeManager:
             
         Returns:
             The new game time after advancement
+            
+        Raises:
+            ValueError: If advancing time would exceed game bounds
         """
-        self._current_time = self._current_time + duration
-        return self._current_time 
+        with self._lock:
+            try:
+                print(f"Current time before advance: {self._current_time.to_datetime().isoformat()}")
+                print(f"Advancing by: {duration.minutes} minutes")
+                self._current_time = self._current_time + duration
+                print(f"New time after advance: {self._current_time.to_datetime().isoformat()}")
+                return self._current_time
+            except ValueError as e:
+                print(f"Failed to advance time: {e}")
+                raise 
