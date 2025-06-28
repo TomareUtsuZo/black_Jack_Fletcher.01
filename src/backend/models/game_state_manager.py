@@ -9,7 +9,7 @@ The manager is responsible for:
 - Coordinating updates and state changes
 """
 
-from typing import Dict, Optional, List, Any, ClassVar, TypedDict, Final
+from typing import Dict, Optional, List, Any, ClassVar, TypedDict, Final, Literal
 from enum import Enum, auto
 from dataclasses import dataclass, field
 from .common.time import GameTime, GameDuration, GameTimeManager
@@ -23,6 +23,12 @@ class GameState(Enum):
     RUNNING = auto()
     PAUSED = auto()
     COMPLETED = auto()
+
+    def __eq__(self, other: object) -> bool:
+        """Compare game states."""
+        if not isinstance(other, GameState):
+            return NotImplemented
+        return self.value == other.value
 
 class UnitInitialState(TypedDict):
     """Type definition for unit initialization parameters"""
@@ -63,31 +69,57 @@ class GameStateManager:
     The manager enforces singleton pattern - only one instance can exist.
     Use GameStateManager.get_instance() to access the manager.
     """
+    # Private init fields
+    _time_manager: GameTimeManager
+    _time_rate: GameDuration
+    _units: Dict[str, Unit]
+    _state: GameState
+    _scheduler: GameScheduler
+    
     # Singleton instance
     _instance: ClassVar[Optional['GameStateManager']] = None
     
-    # Private init fields
-    _time_manager: GameTimeManager = field(init=False)
-    _time_rate: GameDuration = field(init=False)
-    _units: Dict[str, Unit] = field(default_factory=dict, init=False)
-    _paused: bool = field(default=False, init=False)
-    _state: GameState = field(default=GameState.INITIALIZING, init=False)
-    _scheduler: GameScheduler = field(init=False)
-    
-    # Constants
-    DEFAULT_TIME_RATE: Final[int] = 1  # 1 minutes per tick
+    # Constants for time rate bounds
+    DEFAULT_TIME_RATE: Final[GameDuration] = GameDuration.from_minutes(1)  # 1 minute per tick
     TICK_INTERVAL: Final[float] = 1.0  # 1 second between ticks
+    MIN_TIME_RATE: Final[GameDuration] = GameDuration.from_seconds(1)  # Min 1 second per tick
+    MAX_TIME_RATE: Final[GameDuration] = GameDuration.from_hours(1)  # Max 1 hour per tick
     
-    def __post_init__(self) -> None:
-        """Initialize the manager's state."""
+    def __init__(self, time_manager: Optional[GameTimeManager] = None) -> None:
+        """
+        Initialize the manager.
+        
+        Args:
+            time_manager: Optional GameTimeManager instance. If None, creates a new one.
+        """
         if GameStateManager._instance is not None:
             raise RuntimeError("GameStateManager already instantiated")
+        
+        # Initialize all fields
+        print("\nInitializing GameStateManager...")
+        self._time_manager = time_manager if time_manager is not None else GameTimeManager()
+        print(f"Initial game time set to: {self._time_manager.time_now.to_datetime().isoformat()}")
+        
+        self._time_rate = self.DEFAULT_TIME_RATE
+        print(f"Default time rate set to: {self._time_rate.minutes} minutes per tick")
+        
+        self._units = {}
+        self._state = GameState.INITIALIZING
+        self._scheduler = GameScheduler(tick_delay=1.0)  # 1 second between ticks
+        
         GameStateManager._instance = self
         
-        # Initialize with default values
-        self._time_manager = GameTimeManager()
-        self._time_rate = GameDuration.from_minutes(self.DEFAULT_TIME_RATE)
-        self._scheduler = GameScheduler(tick_interval=self.TICK_INTERVAL)
+    def start(self) -> None:
+        """Start the game."""
+        if self._state != GameState.INITIALIZING:
+            raise RuntimeError("Game can only be started from INITIALIZING state")
+            
+        print("\nStarting game...")
+        print(f"Starting time: {self._time_manager.time_now.to_datetime().isoformat()}")
+        print(f"Time rate: {self._time_rate.minutes} minutes per tick")
+            
+        self._state = GameState.RUNNING
+        self._scheduler.start(self.tick)
     
     @classmethod
     def get_instance(cls) -> 'GameStateManager':
@@ -105,18 +137,28 @@ class GameStateManager:
     
     @property
     def current_time(self) -> GameTime:
-        """Get the current game time."""
+        """
+        Get the current game time.
+        
+        Returns:
+            Current point in game time
+        """
         return self._time_manager.time_now
     
     @property
     def time_rate(self) -> GameDuration:
-        """Get the current time rate (how much time advances per tick)."""
+        """
+        Get the current time rate.
+        
+        Returns:
+            Current time advancement rate per tick as a GameDuration
+        """
         return self._time_rate
     
     @property
     def is_paused(self) -> bool:
         """Check if the game is paused."""
-        return self._paused
+        return self._state == GameState.PAUSED
     
     @property
     def game_state(self) -> GameState:
@@ -127,26 +169,61 @@ class GameStateManager:
         """
         Set a new time progression rate.
         
+        This determines how much game time advances per real-time tick.
+        For example:
+        - set_time_rate(GameDuration.from_seconds(1)) -> 1 game second per tick
+        - set_time_rate(GameDuration.from_minutes(1)) -> 1 game minute per tick
+        
         Args:
             new_rate: How much game time should advance per tick
-        """
-        # TODO: Implement time rate change logic
-        raise NotImplementedError
-    
-    def start(self) -> None:
-        """
-        Start the game state manager.
-        
-        This will:
-        1. Set the game state to RUNNING
-        2. Start the scheduler to trigger regular ticks
-        """
-        if self._state != GameState.INITIALIZING:
-            raise RuntimeError("Game is already started")
             
-        self._state = GameState.RUNNING
-        self._paused = False
-        self._scheduler.start(tick_handler=self.tick)
+        Raises:
+            ValueError: If new_rate is outside allowed range
+        """
+        if new_rate < self.MIN_TIME_RATE or new_rate > self.MAX_TIME_RATE:
+            raise ValueError(
+                f"Time rate must be between {self.MIN_TIME_RATE.seconds} seconds and "
+                f"{self.MAX_TIME_RATE.seconds} seconds per tick"
+            )
+        self._time_rate = new_rate
+    
+    def set_time_rate_seconds(self, seconds_per_tick: float) -> None:
+        """
+        Set time rate in seconds per tick.
+        
+        Convenience method for setting time rate using seconds.
+        
+        Args:
+            seconds_per_tick: Number of game seconds that should pass per tick
+            
+        Raises:
+            ValueError: If rate is outside allowed range
+        """
+        self.set_time_rate(GameDuration.from_seconds(seconds_per_tick))
+    
+    def set_time_rate_minutes(self, minutes_per_tick: float) -> None:
+        """
+        Set time rate in minutes per tick.
+        
+        Convenience method for setting time rate using minutes.
+        
+        Args:
+            minutes_per_tick: Number of game minutes that should pass per tick
+            
+        Raises:
+            ValueError: If rate is outside allowed range
+        """
+        self.set_time_rate(GameDuration.from_minutes(minutes_per_tick))
+    
+    @property
+    def time_rate_seconds(self) -> float:
+        """Get the current time rate in seconds per tick."""
+        return self._time_rate.seconds
+    
+    @property
+    def time_rate_minutes(self) -> float:
+        """Get the current time rate in minutes per tick."""
+        return self._time_rate.minutes
     
     def stop(self) -> None:
         """
@@ -171,37 +248,51 @@ class GameStateManager:
         2. Prevent tick updates from processing
         """
         if self._state == GameState.RUNNING:
-            self._paused = True
             self._state = GameState.PAUSED
     
     def unpause(self) -> None:
         """
-        Resume the game.
+        Unpause the game.
         
         This will:
         1. Set the game state to RUNNING
-        2. Allow tick updates to process
+        2. Resume time progression
+        
+        Raises:
+            RuntimeError: If game is not in PAUSED state
         """
-        if self._state == GameState.PAUSED:
-            self._paused = False
-            self._state = GameState.RUNNING
+        if self._state != GameState.PAUSED:
+            raise RuntimeError("Game is not paused")
+        self._state = GameState.RUNNING
     
     def tick(self) -> None:
         """
         Advance the game state by one tick.
         
         This:
-        1. Checks if game is paused
-        2. If not paused:
+        1. Checks if game is paused or not running
+        2. If game is running:
            a. Advances game time by the current time rate
            b. Processes any pending events/orders
            c. Updates all unit states
         """
-        if self._state != GameState.RUNNING or self._paused:
+        if self._state != GameState.RUNNING:
             return
             
-        # TODO: Implement tick logic
-        raise NotImplementedError
+        try:
+            # Advance game time
+            new_time = self._time_manager.advance_time(self._time_rate)
+            print(f"Tick - Game time: {new_time.to_datetime().isoformat()}")
+            
+            # TODO: Process events and update units
+            # For now, just advance time
+            
+        except ValueError as e:
+            # Handle case where time advancement would exceed game bounds
+            print(f"\nGame time limit reached: {e}")
+            print(f"Final game time: {self._time_manager.time_now.to_datetime().isoformat()}")
+            self._state = GameState.COMPLETED
+            self._scheduler.stop()  # Stop the scheduler when game is completed
     
     def add_unit(self, unit_type: UnitType, initial_state: UnitInitialState) -> str:
         """
