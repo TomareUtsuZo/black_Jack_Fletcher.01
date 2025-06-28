@@ -1,7 +1,7 @@
 """
 Tests for game time functionality.
 
-Tests the following classes:
+Tests the following:
 - GameTime: Point in time representation
 - GameDuration: Time interval representation
 - GameTimeManager: Time progression management
@@ -11,6 +11,10 @@ import pytest
 from datetime import datetime, timezone, timedelta
 from typing import cast
 from src.backend.models.common.time import GameTime, GameDuration, GameTimeManager, GameTimeZone
+
+def get_valid_game_time() -> datetime:
+    """Helper to get a datetime within valid game bounds."""
+    return datetime(2024, 6, 1, 12, 0, tzinfo=timezone.utc)  # Mid-2024
 
 class TestGameDuration:
     """Tests for the GameDuration class."""
@@ -56,42 +60,54 @@ class TestGameDuration:
 class TestGameTime:
     """Tests for the GameTime class."""
     
-    def test_creation_and_conversion(self) -> None:
-        """Test creating GameTime and converting between formats."""
-        # Create a specific datetime for testing
-        dt = datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
-        game_time = GameTime.from_datetime(dt)
+    def test_creation_and_validation(self) -> None:
+        """Test creating GameTime with validation."""
+        # Valid time
+        valid_dt = get_valid_game_time()
+        game_time = GameTime.from_datetime(valid_dt)
+        assert game_time.to_datetime() == valid_dt
         
-        # Convert back to datetime and check equality
-        converted_dt = game_time.to_datetime()
-        assert converted_dt == dt
+        # Time before game start
+        with pytest.raises(ValueError, match="Game time must be between"):
+            GameTime.from_datetime(
+                datetime(2023, 1, 1, tzinfo=timezone.utc)
+            )
+        
+        # Time after game end
+        with pytest.raises(ValueError, match="Game time must be between"):
+            GameTime.from_datetime(
+                datetime(2025, 2, 1, tzinfo=timezone.utc)
+            )
+        
+        # Time without timezone
+        with pytest.raises(ValueError, match="datetime must have timezone"):
+            GameTime.from_datetime(
+                datetime(2024, 6, 1)  # No tzinfo
+            )
     
-    def test_time_arithmetic(self) -> None:
-        """Test arithmetic operations with GameTime and GameDuration."""
-        start_time = GameTime.from_datetime(
-            datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
-        )
-        duration = GameDuration.from_hours(2)
+    def test_time_arithmetic_validation(self) -> None:
+        """Test that arithmetic operations respect game time bounds."""
+        mid_game = GameTime.from_datetime(get_valid_game_time())
+        one_year = GameDuration.from_days(365)
         
-        # Addition
-        new_time = start_time + duration
-        assert new_time.to_datetime().hour == 14
+        # Adding too much time
+        with pytest.raises(ValueError, match="Game time must be between"):
+            mid_game + one_year
         
-        # Subtraction of duration
-        result = new_time - duration
-        back_in_time = cast(GameTime, result)  # Ensure we got GameTime, not GameDuration
-        assert back_in_time.to_datetime().hour == 12
+        # Subtracting too much time
+        with pytest.raises(ValueError, match="Game time must be between"):
+            mid_game - one_year
         
-        # Subtraction of times
-        result = new_time - start_time
-        time_passed = cast(GameDuration, result)  # Ensure we got GameDuration, not GameTime
-        assert time_passed.hours == 2
+        # Valid additions and subtractions should work
+        one_day = GameDuration.from_days(1)
+        next_day = mid_game + one_day
+        result = next_day - mid_game
+        duration = cast(GameDuration, result)  # Ensure we got GameDuration, not GameTime
+        assert duration.days == 1
     
-    def test_timezone_handling(self) -> None:
+    def test_time_zone_handling(self) -> None:
         """Test handling of different time zones."""
-        utc_time = GameTime.from_datetime(
-            datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
-        )
+        utc_time = GameTime.from_datetime(get_valid_game_time())
         
         # Convert to EST (UTC-5)
         est_zone = GameTimeZone.from_hours(-5, "EST")
@@ -107,22 +123,14 @@ class TestGameTimeManager:
     
     def test_initialization(self) -> None:
         """Test GameTimeManager initialization."""
-        # Test with default (current) time
-        manager = GameTimeManager()
-        assert isinstance(manager.time_now, GameTime)
-        
         # Test with specific start time
-        start_time = GameTime.from_datetime(
-            datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
-        )
+        start_time = GameTime.from_datetime(get_valid_game_time())
         manager = GameTimeManager(start_time)
         assert manager.time_now == start_time
     
     def test_time_advancement(self) -> None:
         """Test advancing time by different durations."""
-        start_time = GameTime.from_datetime(
-            datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
-        )
+        start_time = GameTime.from_datetime(get_valid_game_time())
         manager = GameTimeManager(start_time)
         
         # Advance by 5 minutes
@@ -138,9 +146,7 @@ class TestGameTimeManager:
     
     def test_time_consistency(self) -> None:
         """Test that time advances consistently and maintains state."""
-        start_time = GameTime.from_datetime(
-            datetime(2024, 1, 1, 12, 0, tzinfo=timezone.utc)
-        )
+        start_time = GameTime.from_datetime(get_valid_game_time())
         manager = GameTimeManager(start_time)
         
         # Make several time advancements

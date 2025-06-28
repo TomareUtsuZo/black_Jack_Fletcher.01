@@ -15,7 +15,7 @@ The game time system supports:
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Union, Optional
+from typing import Union, Optional, ClassVar
 from .time_zone import GameTimeZone
 
 @dataclass(frozen=True)
@@ -105,9 +105,24 @@ class GameTime:
     Game time can run at a different rate than real time using
     a time scale factor. It also supports time zone awareness
     for proper handling of local times in different game regions.
+    
+    The game time is always validated to ensure it falls within
+    the valid game time range (between GAME_START and GAME_END).
     """
+    # Game time boundaries (Unix timestamps)
+    GAME_START: ClassVar[float] = datetime(2024, 1, 1, tzinfo=timezone.utc).timestamp()
+    GAME_END: ClassVar[float] = datetime(2025, 1, 1, tzinfo=timezone.utc).timestamp()
+    
     _timestamp: float  # Unix timestamp in game time
     _time_zone: Optional[GameTimeZone] = None
+    
+    def __post_init__(self) -> None:
+        """Validate the timestamp is within game bounds."""
+        if not self.GAME_START <= self._timestamp <= self.GAME_END:
+            raise ValueError(
+                f"Game time must be between {datetime.fromtimestamp(self.GAME_START, timezone.utc)} "
+                f"and {datetime.fromtimestamp(self.GAME_END, timezone.utc)}"
+            )
     
     @property
     def timestamp(self) -> float:
@@ -130,7 +145,9 @@ class GameTime:
     
     def __add__(self, other: GameDuration) -> 'GameTime':
         """Add a duration to this time."""
-        return GameTime(self._timestamp + other.seconds, self._time_zone)
+        new_timestamp = self._timestamp + other.seconds
+        # This will raise ValueError if the result is outside game bounds
+        return GameTime(new_timestamp, self._time_zone)
     
     def __sub__(self, other: Union[GameDuration, 'GameTime']) -> Union['GameTime', GameDuration]:
         """
@@ -139,19 +156,41 @@ class GameTime:
         Returns:
             - GameTime when subtracting a duration
             - GameDuration when subtracting another GameTime
+            
+        Raises:
+            ValueError: If subtracting a duration would result in a time outside game bounds
         """
         if isinstance(other, GameDuration):
-            return GameTime(self._timestamp - other.seconds, self._time_zone)
+            new_timestamp = self._timestamp - other.seconds
+            # This will raise ValueError if the result is outside game bounds
+            return GameTime(new_timestamp, self._time_zone)
         return GameDuration(self._timestamp - other._timestamp)
     
     @classmethod
     def from_datetime(cls, dt: datetime, time_zone: Optional[GameTimeZone] = None) -> 'GameTime':
-        """Create game time from Python datetime."""
+        """
+        Create game time from Python datetime.
+        
+        Args:
+            dt: The datetime to convert (must have tzinfo)
+            time_zone: Optional game time zone to use
+            
+        Raises:
+            ValueError: If dt has no timezone info or is outside game bounds
+        """
+        if dt.tzinfo is None:
+            raise ValueError("datetime must have timezone information")
         return cls(dt.timestamp(), time_zone)
     
     @classmethod
     def now(cls, time_zone: Optional[GameTimeZone] = None) -> 'GameTime':
-        """Get current game time."""
+        """
+        Get current game time.
+        
+        This will raise ValueError if the current time is outside
+        game bounds. In production, you should typically use a
+        GameTimeManager instead of this method.
+        """
         return cls.from_datetime(datetime.now(timezone.utc), time_zone)
     
     def strftime(self, format: str) -> str:
