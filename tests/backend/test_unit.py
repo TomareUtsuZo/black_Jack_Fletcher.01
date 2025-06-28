@@ -15,31 +15,57 @@ class TestUnit:
     def basic_unit(self) -> Unit:
         """Fixture providing a basic unit for testing"""
         return Unit(
+            unit_id=uuid4(),
             name="Test Destroyer",
+            hull_number="DD-445",
             unit_type=UnitType.DESTROYER,
+            task_force_assigned_to=None,
+            ship_class="Fletcher",
+            faction="USN",
             position=Position(x=0.0, y=0.0),
+            destination=None,
             max_speed=NauticalMiles(30.0),
+            cruise_speed=NauticalMiles(15.0),
+            current_speed=NauticalMiles(0.0),
             max_health=100.0,
-            max_fuel=1000.0
+            current_health=100.0,
+            max_fuel=1000.0,
+            current_fuel=1000.0,
+            crew=273,
+            tonnage=2100.0
         )
     
     @pytest.fixture
     def task_force_unit(self) -> Unit:
         """Fixture providing a unit assigned to a task force"""
         return Unit(
+            unit_id=uuid4(),
             name="Task Force Ship",
+            hull_number="CA-68",
             unit_type=UnitType.CRUISER,
+            task_force_assigned_to="TF-38",
+            ship_class="Baltimore",
+            faction="USN",
             position=Position(x=10.0, y=10.0),
+            destination=None,
             max_speed=NauticalMiles(25.0),
+            cruise_speed=NauticalMiles(15.0),
+            current_speed=NauticalMiles(0.0),
             max_health=150.0,
+            current_health=150.0,
             max_fuel=1200.0,
-            task_force="TF-38"
+            current_fuel=1200.0,
+            crew=1142,
+            tonnage=13600.0
         )
 
     def test_unit_initialization(self, basic_unit: Unit) -> None:
         """Test that a unit is properly initialized with default values"""
         assert basic_unit.attributes.name == "Test Destroyer"
+        assert basic_unit.attributes.hull_number == "DD-445"
         assert basic_unit.attributes.unit_type == UnitType.DESTROYER
+        assert basic_unit.attributes.ship_class == "Fletcher"
+        assert basic_unit.attributes.faction == "USN"
         assert basic_unit.attributes.position == Position(0.0, 0.0)
         assert basic_unit.attributes.current_health == basic_unit.attributes.max_health
         assert basic_unit.attributes.current_fuel == basic_unit.attributes.max_fuel
@@ -52,6 +78,8 @@ class TestUnit:
         """Test that a unit can be initialized with a task force"""
         assert task_force_unit.attributes.task_force_assigned_to == "TF-38"
         assert task_force_unit.attributes.position == Position(10.0, 10.0)
+        assert task_force_unit.attributes.ship_class == "Baltimore"
+        assert task_force_unit.attributes.hull_number == "CA-68"
 
     def test_unit_takes_damage(self, basic_unit: Unit) -> None:
         """Test unit damage handling"""

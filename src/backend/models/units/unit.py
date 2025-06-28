@@ -18,22 +18,28 @@ class UnitModule(Protocol):
 class UnitAttributes:
     """Core attributes that define a unit"""
     # Identity
-    name: str
-    unit_id: UUID
+    unit_id: UUID  # Unique identifier for the ship
+    name: str  # Full name of the ship
+    hull_number: str  # Hull number in proper naval format
     unit_type: UnitType
     task_force_assigned_to: Optional[str]  # Could be UUID if TaskForce gets its own type
-    
+    ship_class: str  # Class of the ship
+    faction: str  # Faction of the ship
+
     # Position and Movement
     position: Position
     destination: Optional[Position]
     max_speed: NauticalMiles  # Maximum speed in knots (nautical miles per hour)
+    cruise_speed: NauticalMiles  # Economical cruising speed in knots
     current_speed: NauticalMiles  # Current speed in knots
-    
+
     # Resources
     max_health: float
     current_health: float
     max_fuel: float
     current_fuel: float
+    crew: int  # Standard complement (probably not relevant, but good for stories)
+    tonnage: float  # Tonnage of the ship (probably not relevant, but good for stories)
 
 class Unit:
     """
@@ -42,41 +48,67 @@ class Unit:
     """
     def __init__(
         self,
+        unit_id: UUID,
         name: str,
+        hull_number: str,
         unit_type: UnitType,
+        task_force_assigned_to: Optional[str],
+        ship_class: str,
+        faction: str,
         position: Position,
+        destination: Optional[Position],
         max_speed: NauticalMiles,
+        cruise_speed: NauticalMiles,
+        current_speed: NauticalMiles,
         max_health: float,
+        current_health: float,
         max_fuel: float,
-        task_force: Optional[str] = None,
-        unit_id: Optional[UUID] = None
+        current_fuel: float,
+        crew: int,
+        tonnage: float
     ) -> None:
         """
         Initialize a new Unit with the given attributes.
         
         Args:
+            unit_id: Unique identifier for the ship
             name: The unit's name
+            hull_number: Hull number in proper naval format
             unit_type: The type of unit (ship, submarine, etc.)
+            task_force_assigned_to: Optional task force assignment
+            ship_class: Class of the ship
+            faction: Faction the unit belongs to
             position: Initial position
-            max_speed: Maximum speed capability in knots (nautical miles per hour)
+            destination: Optional destination position
+            max_speed: Maximum speed capability in knots
+            cruise_speed: Economical cruising speed in knots
+            current_speed: Current speed in knots
             max_health: Maximum health points
+            current_health: Current health points
             max_fuel: Maximum fuel capacity
-            task_force: Optional task force assignment
-            unit_id: Optional UUID (will be generated if not provided)
+            current_fuel: Current fuel level
+            crew: Standard complement
+            tonnage: Ship's tonnage
         """
         self.attributes = UnitAttributes(
+            unit_id=unit_id,
             name=name,
-            unit_id=unit_id or uuid4(),
+            hull_number=hull_number,
             unit_type=unit_type,
-            task_force_assigned_to=task_force,
+            task_force_assigned_to=task_force_assigned_to,
+            ship_class=ship_class,
+            faction=faction,
             position=position,
-            destination=None,
+            destination=destination,
             max_speed=max_speed,
-            current_speed=NauticalMiles(0.0),  # Start stationary
+            cruise_speed=cruise_speed,
+            current_speed=current_speed,
             max_health=max_health,
-            current_health=max_health,  # Start at full health
+            current_health=current_health,
             max_fuel=max_fuel,
-            current_fuel=max_fuel,  # Start with full fuel
+            current_fuel=current_fuel,
+            crew=crew,
+            tonnage=tonnage
         )
         self._modules: Dict[str, UnitModule] = {}
     
