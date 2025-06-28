@@ -136,7 +136,8 @@ class GameTime:
     GAME_START: ClassVar[datetime] = datetime(1900, 1, 1, tzinfo=timezone.utc)
     PEARL_HARBOR_ATTACK: ClassVar[datetime] = datetime(1941, 12, 7, 17, 48, tzinfo=timezone.utc)
     
-    _time: datetime  # The actual datetime object
+    # The actual datetime object must come before optional fields
+    _time: datetime
     _time_zone: Optional[GameTimeZone] = None
     
     def __post_init__(self) -> None:
