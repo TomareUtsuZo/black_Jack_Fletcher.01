@@ -115,8 +115,13 @@ class GameTimeController:
     - Time rate configuration
     - Time advancement
     - Tick scheduling
+    
+    Design Pattern:
+    - Acts as a higher-level controller over GameTimeManager
+    - Separates time rate control from basic time tracking
+    - Allows for dependency injection of time management
     """
-    # Fields without defaults must come first
+    # The GameTimeManager can be injected for testing or advanced usage
     _init_time_manager: Optional[GameTimeManager]
     
     # Time rate constants
@@ -137,6 +142,8 @@ class GameTimeController:
         Initialize after dataclass fields are set.
         
         This ensures all fields are properly initialized before we use them.
+        The _init_time_manager is either used or replaced with a new instance,
+        allowing for both simple usage and testing scenarios.
         """
         # Initialize _time_manager with the stored value or create a new one
         self._time_manager = self._init_time_manager if self._init_time_manager is not None else GameTimeManager()
@@ -233,8 +240,21 @@ class GameStateManager:
     - Maintains the single source of truth for game state
     - Coordinates between different subsystems
     - Provides a unified interface for game operations
+    
+    Time Management Design:
+    The time management system uses a layered approach:
+    1. GameTimeManager (lowest): Basic time tracking and validation
+    2. GameTimeController (middle): Time rate control and scheduling
+    3. GameStateManager (highest): System coordination and state management
+    
+    This layered design allows for:
+    - Simple usage: Just create GameStateManager() and everything works
+    - Testing: Inject a mock time manager for controlled testing
+    - Advanced: Share time manager between multiple systems if needed
+    - Clean separation: Each layer has a single responsibility
     """
-    # Optional initialization parameter with default
+    # Optional time manager injection for testing or advanced usage
+    # If None (default), GameTimeController will create its own GameTimeManager
     time_manager: Optional[GameTimeManager] = field(default=None)
     
     # Error messages
@@ -249,20 +269,28 @@ class GameStateManager:
     _instance: ClassVar[Optional['GameStateManager']] = None
     
     # Subsystems - initialized in __post_init__
+    # Each subsystem is created in a specific order to maintain dependencies
     _state_machine: GameStateMachine = field(init=False)
     _time_controller: GameTimeController = field(init=False)
     _unit_manager: UnitManager = field(init=False)
     
     def __post_init__(self) -> None:
-        """Initialize after dataclass fields are set."""
+        """
+        Initialize after dataclass fields are set.
+        
+        The initialization order is important:
+        1. State machine (no dependencies)
+        2. Time controller (optional time_manager dependency)
+        3. Unit manager (depends on time being available)
+        """
         if GameStateManager._instance is not None:
             raise RuntimeError(self.ERROR_ALREADY_INSTANTIATED)
             
         print("\nInitializing GameStateManager...")
         
-        # Initialize subsystems in order
+        # Initialize subsystems in dependency order
         self._state_machine = GameStateMachine()
-        self._time_controller = GameTimeController(self.time_manager)
+        self._time_controller = GameTimeController(self.time_manager)  # May create new GameTimeManager if None
         self._unit_manager = UnitManager()
         
         GameStateManager._instance = self
