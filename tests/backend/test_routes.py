@@ -11,6 +11,9 @@ from src.backend.services.game_service import game_manager
 @pytest.fixture(autouse=True)
 def setup_game_state() -> Generator[None, None, None]:
     """Setup game state before each test."""
+    # Stop any existing scheduler
+    game_manager.stop()
+    
     # Start in INITIALIZING state
     game_manager._state_machine._state = GameState.INITIALIZING
     # Transition to RUNNING state
