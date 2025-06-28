@@ -6,14 +6,20 @@ Tests the following:
 - Time rate management
 - Game state transitions
 - Time progression
+- Unit management
+- Error handling
 """
 
 import pytest
 from datetime import datetime, timezone
-from typing import Generator
-from src.backend.models.game_state_manager import GameStateManager, GameState
+from typing import Generator, Dict, cast
+from src.backend.models.game_state_manager import (
+    GameStateManager, GameState, UnitInitialState,
+    MovementOrders, TargetingParameters, DamageInfo
+)
 from src.backend.models.common.time import GameTime, GameDuration, GameTimeManager
 from src.backend.models.common.time.time_zone import GameTimeZone
+from src.backend.models.units.types.unit_type import UnitType
 
 def get_valid_game_time() -> GameTime:
     """Helper to get a datetime within valid game bounds."""
@@ -39,6 +45,14 @@ class TestGameStateManager:
     def game_time_manager(self) -> GameTimeManager:
         """Fixture to create GameTimeManager with valid time."""
         return GameTimeManager(start_time=get_valid_game_time())
+    
+    @pytest.fixture
+    def sample_unit_state(self) -> UnitInitialState:
+        """Create a sample unit initial state."""
+        return {
+            "position": {"x": 100.0, "y": 200.0},
+            "orientation": 45.0
+        }
     
     def test_singleton_pattern(self, game_time_manager: GameTimeManager) -> None:
         """Test that GameStateManager enforces singleton pattern."""
@@ -149,4 +163,81 @@ class TestGameStateManager:
         assert isinstance(time_diff, GameDuration)  # Type check for mypy
         assert time_diff.minutes == 1.0  # Should advance exactly one minute
         
-        manager.stop() 
+        manager.stop()
+    
+    def test_game_state_equality(self) -> None:
+        """Test GameState equality comparison."""
+        # Test same states
+        assert GameState.RUNNING == GameState.RUNNING
+        assert GameState.PAUSED == GameState.PAUSED
+        assert GameState.COMPLETED == GameState.COMPLETED
+        assert GameState.INITIALIZING == GameState.INITIALIZING
+        
+        # Test different states
+        assert GameState.RUNNING != GameState.PAUSED
+        assert GameState.PAUSED != GameState.COMPLETED
+        assert GameState.COMPLETED != GameState.INITIALIZING
+        
+        # Test comparison with non-GameState
+        assert GameState.RUNNING != "RUNNING"
+        assert GameState.PAUSED != 2
+        assert GameState.COMPLETED != None
+    
+    def test_unit_operations(self, game_time_manager: GameTimeManager, sample_unit_state: UnitInitialState) -> None:
+        """Test unit management operations."""
+        manager = GameStateManager(time_manager=game_time_manager)
+        
+        # Test adding unit (should raise NotImplementedError)
+        with pytest.raises(NotImplementedError):
+            manager.add_unit(UnitType.CARRIER, sample_unit_state)
+        
+        # Test removing unit (should raise NotImplementedError)
+        with pytest.raises(NotImplementedError):
+            manager.remove_unit("test_unit")
+        
+        # Test getting unit (should return None for non-existent unit)
+        assert manager.get_unit("test_unit") is None
+        
+        # Test getting all units (should return empty list)
+        assert manager.get_all_units() == []
+    
+    def test_unit_movement_and_targeting(self, game_time_manager: GameTimeManager) -> None:
+        """Test unit movement and targeting operations."""
+        manager = GameStateManager(time_manager=game_time_manager)
+        
+        # Test movement orders (should raise NotImplementedError)
+        movement_orders: MovementOrders = {
+            "waypoints": [{"x": 100.0, "y": 200.0}],
+            "speed": 30.0
+        }
+        with pytest.raises(NotImplementedError):
+            manager.set_unit_movement("test_unit", movement_orders)
+        
+        # Test targeting parameters (should raise NotImplementedError)
+        targeting_params: TargetingParameters = {
+            "target_id": "enemy_unit",
+            "priority": 1
+        }
+        with pytest.raises(NotImplementedError):
+            manager.set_unit_targeting("test_unit", targeting_params)
+        
+        # Test damage application (should raise NotImplementedError)
+        damage_info: DamageInfo = {
+            "amount": 50.0,
+            "type": "kinetic",
+            "source_id": "attacker_unit"
+        }
+        with pytest.raises(NotImplementedError):
+            manager.apply_damage("test_unit", damage_info)
+    
+    def test_time_limit_handling(self, game_time_manager: GameTimeManager) -> None:
+        """Test handling of time limit reached error."""
+        manager = GameStateManager(time_manager=game_time_manager)
+        manager._state = GameState.RUNNING
+        
+        # Simulate time limit error
+        error = ValueError("Time limit reached")
+        manager._handle_time_limit_reached(error)
+        
+        # Check game was stopped
+        assert manager.game_state == GameState.COMPLETED 
