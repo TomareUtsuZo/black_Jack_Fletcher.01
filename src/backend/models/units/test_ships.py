@@ -58,7 +58,7 @@ USS_FLETCHER = ShipSpecification(
     task_force_assigned_to=None,
     ship_class="Fletcher",
     faction="USN",
-    position=Position(x=0.0, y=0.0),  # Default starting position
+    position=Position(x=MIDWAY_X + 0.1, y=MIDWAY_Y + 0.05),  # ~5-6nm ENE of Midway
     destination=None,
     max_speed=NauticalMiles(36.5),  # Max speed achieved during trials
     cruise_speed=NauticalMiles(15.0),  # Economic cruise speed
@@ -79,7 +79,7 @@ USS_TALEN = ShipSpecification(
     task_force_assigned_to=None,
     ship_class="Fletcher",
     faction="USN",
-    position=Position(x=0.0, y=0.0),
+    position=Position(x=MIDWAY_X - 0.08, y=MIDWAY_Y + 0.07),  # ~7nm NW of Midway
     destination=None,
     max_speed=NauticalMiles(36.5),
     cruise_speed=NauticalMiles(15.0),
@@ -101,7 +101,7 @@ IJN_YUKIKAZE = ShipSpecification(
     task_force_assigned_to=None,
     ship_class="Kagero",
     faction="IJN",
-    position=Position(x=MIDWAY_X + 5.0, y=MIDWAY_Y + 3.0),  # 5nm east, 3nm north of Midway
+    position=Position(x=MIDWAY_X - 0.12, y=MIDWAY_Y - 0.06),  # ~8nm SW of Midway
     destination=None,
     max_speed=NauticalMiles(35.5),  # Historical max speed
     cruise_speed=NauticalMiles(18.0),  # Historical cruise speed
@@ -123,7 +123,7 @@ PIRATE_QUEEN = ShipSpecification(
     task_force_assigned_to=None,
     ship_class="Privateer",
     faction="UNALIGNED",
-    position=Position(x=MIDWAY_X - 7.0, y=MIDWAY_Y - 4.0),  # 7nm west, 4nm south of Midway
+    position=Position(x=MIDWAY_X + 0.06, y=MIDWAY_Y - 0.08),  # ~6nm SE of Midway
     destination=None,
     max_speed=NauticalMiles(28.0),  # Fast for a pirate vessel
     cruise_speed=NauticalMiles(12.0),
