@@ -27,14 +27,19 @@ class NauticalMiles:
     STATUTE_MILES_PER_NMILE: ClassVar[float] = 1.15078
     KILOMETERS_PER_NMILE: ClassVar[float] = METERS_PER_NMILE / 1000.0
     
-    # The actual distance in nautical miles
-    value: float
+    # Distance in nautical miles (1 NM = 1852 meters)
+    _distance_nm: float
+    
+    @property
+    def value(self) -> float:
+        """The distance in nautical miles."""
+        return self._distance_nm
     
     def __post_init__(self) -> None:
         """Validate the nautical mile value."""
-        if not isinstance(self.value, (int, float)):
+        if not isinstance(self._distance_nm, (int, float)):
             raise TypeError("Nautical mile value must be a number")
-        if self.value < 0:
+        if self._distance_nm < 0:
             raise ValueError("Nautical mile value cannot be negative")
     
     @classmethod
@@ -93,33 +98,33 @@ class NauticalMiles:
     
     def to_meters(self) -> float:
         """Convert to meters."""
-        return self.value * self.METERS_PER_NMILE
+        return self._distance_nm * self.METERS_PER_NMILE
     
     def to_kilometers(self) -> float:
         """Convert to kilometers."""
-        return self.value * self.KILOMETERS_PER_NMILE
+        return self._distance_nm * self.KILOMETERS_PER_NMILE
     
     def to_statute_miles(self) -> float:
         """Convert to statute miles."""
-        return self.value * self.STATUTE_MILES_PER_NMILE
+        return self._distance_nm * self.STATUTE_MILES_PER_NMILE
     
     def __add__(self, other: "NauticalMiles") -> "NauticalMiles":
         """Add two NauticalMiles values."""
         if not isinstance(other, NauticalMiles):
             return NotImplemented
-        return NauticalMiles(self.value + other.value)
+        return NauticalMiles(self._distance_nm + other._distance_nm)
     
     def __sub__(self, other: "NauticalMiles") -> "NauticalMiles":
         """Subtract two NauticalMiles values."""
         if not isinstance(other, NauticalMiles):
             return NotImplemented
-        return NauticalMiles(self.value - other.value)
+        return NauticalMiles(self._distance_nm - other._distance_nm)
     
     def __mul__(self, scalar: Union[int, float]) -> "NauticalMiles":
         """Multiply NauticalMiles by a scalar."""
         if not isinstance(scalar, (int, float)):
             return NotImplemented
-        return NauticalMiles(self.value * scalar)
+        return NauticalMiles(self._distance_nm * scalar)
     
     def __truediv__(self, scalar: Union[int, float]) -> "NauticalMiles":
         """Divide NauticalMiles by a scalar."""
@@ -127,30 +132,30 @@ class NauticalMiles:
             return NotImplemented
         if scalar == 0:
             raise ZeroDivisionError("Cannot divide by zero")
-        return NauticalMiles(self.value / scalar)
+        return NauticalMiles(self._distance_nm / scalar)
     
     def __eq__(self, other: object) -> bool:
         """Check if two NauticalMiles values are equal."""
         if not isinstance(other, NauticalMiles):
             return NotImplemented
-        return self.value == other.value
+        return self._distance_nm == other._distance_nm
     
     def __lt__(self, other: "NauticalMiles") -> bool:
         """Check if this distance is less than another."""
         if not isinstance(other, NauticalMiles):
             return NotImplemented
-        return self.value < other.value
+        return self._distance_nm < other._distance_nm
     
     def __le__(self, other: "NauticalMiles") -> bool:
         """Check if this distance is less than or equal to another."""
         if not isinstance(other, NauticalMiles):
             return NotImplemented
-        return self.value <= other.value
+        return self._distance_nm <= other._distance_nm
     
     def __str__(self) -> str:
         """Return string representation."""
-        return f"{self.value:.2f} NM"
+        return f"{self._distance_nm:.2f} NM"
     
     def __repr__(self) -> str:
         """Return detailed string representation."""
-        return f"NauticalMiles({self.value})" 
+        return f"NauticalMiles({self._distance_nm})" 
