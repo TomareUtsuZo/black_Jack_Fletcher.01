@@ -148,10 +148,6 @@ class GameTimeController:
         # Initialize _time_manager with the stored value or create a new one
         self._time_manager = self._init_time_manager if self._init_time_manager is not None else GameTimeManager()
         
-        # Now we can safely use the initialized fields
-        print(f"Initial game time set to: {self._time_manager.time_now.to_datetime().isoformat()}")
-        print(f"Default time rate set to: {self._time_rate.minutes} minutes per tick")
-        
         # Clean up the temporary storage
         del self._init_time_manager
     
@@ -184,9 +180,7 @@ class GameTimeController:
     
     def advance_time(self) -> GameTime:
         """Advance game time by one tick."""
-        new_time = self._time_manager.advance_time(self._time_rate)
-        print(f"Tick - Game time: {new_time.to_datetime().isoformat()}")
-        return new_time
+        return self._time_manager.advance_time(self._time_rate)
     
     def start_scheduler(self, tick_handler: Any) -> None:
         """Start the game scheduler."""
@@ -286,11 +280,9 @@ class GameStateManager:
         if GameStateManager._instance is not None:
             raise RuntimeError(self.ERROR_ALREADY_INSTANTIATED)
             
-        print("\nInitializing GameStateManager...")
-        
         # Initialize subsystems in dependency order
         self._state_machine = GameStateMachine()
-        self._time_controller = GameTimeController(self.time_manager)  # May create new GameTimeManager if None
+        self._time_controller = GameTimeController(self.time_manager)
         self._unit_manager = UnitManager()
         
         GameStateManager._instance = self
@@ -305,9 +297,6 @@ class GameStateManager:
     def start(self) -> None:
         """Start the game."""
         self._state_machine.transition_to_running()
-        print("\nStarting game...")
-        print(f"Starting time: {self._time_controller.current_time.to_datetime().isoformat()}")
-        print(f"Time rate: {self._time_controller.time_rate.minutes} minutes per tick")
         self._time_controller.start_scheduler(self.tick)
     
     def stop(self) -> None:
@@ -327,8 +316,6 @@ class GameStateManager:
     
     def _handle_time_limit_reached(self, error: ValueError) -> None:
         """Handle time limit reached error."""
-        print(f"\nGame time limit reached: {error}")
-        print(f"Final game time: {self._time_controller.current_time.to_datetime().isoformat()}")
         self.stop()
     
     def tick(self) -> None:
