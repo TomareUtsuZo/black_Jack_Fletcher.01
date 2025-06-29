@@ -7,7 +7,7 @@ and handles all movement-related calculations and state changes for units.
 
 import math
 from dataclasses import dataclass
-from typing import Optional, Protocol
+from typing import Optional, Protocol, Tuple
 
 from src.backend.models.common.geometry import (
     Position,
@@ -17,6 +17,9 @@ from src.backend.models.common.geometry import (
     bearing_between
 )
 from src.backend.models.units import UnitModule, UnitAttributes
+
+# Constants for movement calculations
+DESTINATION_REACHED_THRESHOLD = NauticalMiles(0.1)  # Within 0.1 nautical miles considered "at destination"
 
 def calculate_cartesian_distance(pos1: Position, pos2: Position) -> NauticalMiles:
     """Calculate straight-line distance between two positions using Cartesian geometry."""
@@ -132,7 +135,82 @@ class MovementModule:
         self.unit_attributes.destination = None
         self._state.is_moving = False
         self._state.current_bearing = None
-    
+
+    def _should_update_position(self) -> bool:
+        """
+        Check if the unit's position should be updated.
+        
+        Returns:
+            bool: True if the unit should move, False otherwise
+        """
+        return (
+            self._state.is_moving and 
+            self.unit_attributes.current_speed.value > 0
+        )
+
+    def _calculate_distance_to_destination(self) -> Optional[NauticalMiles]:
+        """
+        Calculate distance to current destination if one exists.
+        
+        Returns:
+            Optional[NauticalMiles]: Distance to destination or None if no destination
+        """
+        if self.unit_attributes.destination is None:
+            return None
+            
+        return calculate_cartesian_distance(
+            self.unit_attributes.position,
+            self.unit_attributes.destination
+        )
+
+    def _calculate_movement_vector(self, distance: NauticalMiles) -> Tuple[float, float]:
+        """
+        Calculate the x and y components of movement based on bearing and distance.
+        
+        Args:
+            distance: Distance to move
+            
+        Returns:
+            Tuple[float, float]: The x and y components of movement
+        """
+        if self._state.current_bearing is None:
+            return (0.0, 0.0)
+            
+        bearing_rad = math.radians(self._state.current_bearing.degrees)
+        dx = distance.value * math.sin(bearing_rad)
+        dy = distance.value * math.cos(bearing_rad)
+        return (dx, dy)
+
+    def _update_position(self, dx: float, dy: float) -> None:
+        """
+        Update the unit's position based on movement vector.
+        
+        Args:
+            dx: Change in x position
+            dy: Change in y position
+        """
+        new_position = Position(
+            self.unit_attributes.position.x + dx,
+            self.unit_attributes.position.y + dy
+        )
+        self.unit_attributes.position = new_position
+
+    def _check_destination_reached(self) -> bool:
+        """
+        Check if unit has reached its destination.
+        
+        Returns:
+            bool: True if destination reached, False otherwise
+        """
+        if self.unit_attributes.destination is None:
+            return False
+            
+        distance = self._calculate_distance_to_destination()
+        if distance is None:
+            return False
+            
+        return distance.value < DESTINATION_REACHED_THRESHOLD.value
+
     def update(self, time_delta: float) -> None:
         """
         Update the unit's position and movement state.
@@ -140,45 +218,26 @@ class MovementModule:
         Args:
             time_delta: Time elapsed since last update in current time rate
         """
-        if not self._state.is_moving or self.unit_attributes.current_speed.value == 0:
+        if not self._should_update_position():
             return
             
         # Calculate distance we can travel in this time step
-        distance_can_travel_in_time_delta = self.unit_attributes.current_speed * time_delta
+        distance_can_travel = self.unit_attributes.current_speed * time_delta
         
-        # If we have a destination, check if it's closer than the distance we can travel
-        if self.unit_attributes.destination is not None:
-            distance_to_destination = calculate_cartesian_distance(
-                self.unit_attributes.position,
-                self.unit_attributes.destination
-            )
-            
-            # If destination is closer than what we can travel, move directly to it and stop
-            if distance_to_destination.value <= distance_can_travel_in_time_delta.value:
-                # Move directly to destination
+        # Check if destination is closer than what we can travel
+        distance_to_destination = self._calculate_distance_to_destination()
+        if distance_to_destination is not None:
+            if distance_to_destination.value <= distance_can_travel.value:
+                # Move directly to destination and stop
                 self.unit_attributes.position = self.unit_attributes.destination
                 self.stop()
                 return
         
-        # Calculate new position based on bearing and distance
-        if self._state.current_bearing is not None:
-            # Calculate movement vector components
-            dx = distance_can_travel_in_time_delta.value * math.sin(math.radians(self._state.current_bearing.degrees))
-            dy = distance_can_travel_in_time_delta.value * math.cos(math.radians(self._state.current_bearing.degrees))
-            
-            # Update position
-            new_position = Position(
-                self.unit_attributes.position.x + dx,
-                self.unit_attributes.position.y + dy
-            )
-            self.unit_attributes.position = new_position
-            
-            # Check if we've reached the destination
-            if self.unit_attributes.destination is not None:
-                distance_to_destination = calculate_cartesian_distance(
-                    self.unit_attributes.position,
-                    self.unit_attributes.destination
-                )
-                if distance_to_destination.value < 0.1:  # Within 0.1 nautical miles
-                    self.unit_attributes.position = self.unit_attributes.destination
-                    self.stop() 
+        # Calculate and apply movement
+        dx, dy = self._calculate_movement_vector(distance_can_travel)
+        self._update_position(dx, dy)
+        
+        # Check if we've reached destination after movement
+        if self._check_destination_reached():
+            self.unit_attributes.position = self.unit_attributes.destination
+            self.stop() 

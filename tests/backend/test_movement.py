@@ -152,4 +152,98 @@ def test_no_movement_at_zero_speed(movement_module: MovementModule) -> None:
 
     movement_module.update(1.0)
 
-    assert movement_module.unit_attributes.position == initial_pos 
+    assert movement_module.unit_attributes.position == initial_pos
+
+def test_half_speed_movement(movement_module: MovementModule) -> None:
+    """Test movement at half normal time rate (30 seconds)."""
+    # Set up movement north at 10 knots
+    movement_module.set_destination(Position(0.0, 10.0))
+    movement_module.set_speed(NauticalMiles(10.0))
+
+    # Move for 0.5 time units (30 seconds)
+    movement_module.update(0.5)
+
+    # Should have moved 5 units north (half of normal movement)
+    assert math.isclose(movement_module.unit_attributes.position.y, 5.0, rel_tol=1e-10)
+    assert math.isclose(movement_module.unit_attributes.position.x, 0.0, rel_tol=1e-10)
+
+def test_double_speed_movement(movement_module: MovementModule) -> None:
+    """Test movement at double normal time rate (2 minutes)."""
+    # Set up movement north at 10 knots
+    movement_module.set_destination(Position(0.0, 20.0))
+    movement_module.set_speed(NauticalMiles(10.0))
+
+    # Move for 2.0 time units (2 minutes)
+    movement_module.update(2.0)
+
+    # Should have moved 20 units north (double normal movement)
+    assert math.isclose(movement_module.unit_attributes.position.y, 20.0, rel_tol=1e-10)
+    assert math.isclose(movement_module.unit_attributes.position.x, 0.0, rel_tol=1e-10)
+
+def test_very_slow_movement(movement_module: MovementModule) -> None:
+    """Test movement at very slow time rate (6 seconds)."""
+    # Set up movement north at 10 knots
+    movement_module.set_destination(Position(0.0, 10.0))
+    movement_module.set_speed(NauticalMiles(10.0))
+
+    # Move for 0.1 time units (6 seconds)
+    movement_module.update(0.1)
+
+    # Should have moved 1 unit north (1/10th of normal movement)
+    assert math.isclose(movement_module.unit_attributes.position.y, 1.0, rel_tol=1e-10)
+    assert math.isclose(movement_module.unit_attributes.position.x, 0.0, rel_tol=1e-10)
+
+def test_very_fast_movement(movement_module: MovementModule) -> None:
+    """Test movement at very fast time rate (5 minutes)."""
+    # Set up movement north at 10 knots
+    movement_module.set_destination(Position(0.0, 50.0))
+    movement_module.set_speed(NauticalMiles(10.0))
+
+    # Move for 5.0 time units (5 minutes)
+    movement_module.update(5.0)
+
+    # Should have moved 50 units north (5x normal movement)
+    assert math.isclose(movement_module.unit_attributes.position.y, 50.0, rel_tol=1e-10)
+    assert math.isclose(movement_module.unit_attributes.position.x, 0.0, rel_tol=1e-10)
+
+def test_diagonal_movement_at_different_speeds(movement_module: MovementModule) -> None:
+    """Test diagonal movement at different time rates."""
+    # Test half speed (30 seconds)
+    movement_module.set_destination(Position(10.0, 10.0))
+    movement_module.set_speed(NauticalMiles(10.0))
+    movement_module.update(0.5)
+
+    expected_x = 3.535533905932738  # 5 * sin(45°)
+    expected_y = 3.535533905932738  # 5 * cos(45°)
+    assert math.isclose(movement_module.unit_attributes.position.x, expected_x, rel_tol=1e-10)
+    assert math.isclose(movement_module.unit_attributes.position.y, expected_y, rel_tol=1e-10)
+
+    # Test double speed (2 minutes) with new destination
+    movement_module.unit_attributes.position = Position(0.0, 0.0)  # Reset position
+    movement_module.set_destination(Position(20.0, 20.0))  # Set new destination
+    movement_module.set_speed(NauticalMiles(10.0))  # Ensure speed is set
+    movement_module.update(2.0)
+
+    expected_x = 14.142135623730951  # 20 * sin(45°)
+    expected_y = 14.142135623730951  # 20 * cos(45°)
+    assert math.isclose(movement_module.unit_attributes.position.x, expected_x, rel_tol=1e-10)
+    assert math.isclose(movement_module.unit_attributes.position.y, expected_y, rel_tol=1e-10)
+
+def test_continuous_movement_at_different_speeds(movement_module: MovementModule) -> None:
+    """Test continuous movement with changing time rates."""
+    # Set up movement north at 10 knots
+    movement_module.set_destination(Position(0.0, 100.0))  # Far destination
+    movement_module.set_speed(NauticalMiles(10.0))
+
+    # Move at different speeds and verify positions
+    movement_module.update(0.5)  # 30 seconds
+    assert math.isclose(movement_module.unit_attributes.position.y, 5.0, rel_tol=1e-10)
+
+    movement_module.update(1.0)  # 1 minute
+    assert math.isclose(movement_module.unit_attributes.position.y, 15.0, rel_tol=1e-10)
+
+    movement_module.update(2.0)  # 2 minutes
+    assert math.isclose(movement_module.unit_attributes.position.y, 35.0, rel_tol=1e-10)
+
+    movement_module.update(0.1)  # 6 seconds
+    assert math.isclose(movement_module.unit_attributes.position.y, 36.0, rel_tol=1e-10) 
