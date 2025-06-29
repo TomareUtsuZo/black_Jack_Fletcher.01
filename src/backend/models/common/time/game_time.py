@@ -252,11 +252,7 @@ class GameTime:
     @classmethod
     def default_start_time(cls) -> 'GameTime':
         """Get the default game start time (Pearl Harbor attack)."""
-        print("\nCreating default start time...")
-        print(f"Using Pearl Harbor attack time: {cls.PEARL_HARBOR_ATTACK.isoformat()}")
-        time = cls(cls.PEARL_HARBOR_ATTACK)
-        print(f"Created GameTime object with time: {time}")
-        return time
+        return cls(cls.PEARL_HARBOR_ATTACK)
 
 @dataclass(init=False)
 class GameTimeManager:
@@ -284,17 +280,8 @@ class GameTimeManager:
         Args:
             start_time: Initial game time (defaults to Pearl Harbor attack time if None)
         """
-        print("\nInitializing GameTimeManager...")
         self._lock = Lock()
-        
-        if start_time is not None:
-            print(f"Using provided start time: {start_time.to_datetime().isoformat()}")
-            self._current_time = start_time
-        else:
-            print("No start time provided, using Pearl Harbor attack time...")
-            default_time = GameTime.default_start_time()
-            print(f"Default start time set to: {default_time.to_datetime().isoformat()}")
-            self._current_time = default_time
+        self._current_time = start_time if start_time is not None else GameTime.default_start_time()
     
     @property
     def time_now(self) -> GameTime:
@@ -316,12 +303,5 @@ class GameTimeManager:
             ValueError: If advancing time would exceed game bounds
         """
         with self._lock:
-            try:
-                print(f"Current time before advance: {self._current_time.to_datetime().isoformat()}")
-                print(f"Advancing by: {duration.minutes} minutes")
-                self._current_time = self._current_time + duration
-                print(f"New time after advance: {self._current_time.to_datetime().isoformat()}")
-                return self._current_time
-            except ValueError as e:
-                print(f"Failed to advance time: {e}")
-                raise 
+            self._current_time = self._current_time + duration
+            return self._current_time 

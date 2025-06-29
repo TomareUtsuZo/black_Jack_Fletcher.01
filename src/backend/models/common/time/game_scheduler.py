@@ -48,7 +48,7 @@ class GameScheduler:
             raise TypeError(
                 f"Tick handler must take no arguments. Got: {sig}"
             )
-        
+            
         self._tick_handler = tick_handler
         self._stop_event.clear()
         
@@ -73,21 +73,14 @@ class GameScheduler:
     def _scheduler_loop(self) -> None:
         """Main scheduler loop that triggers ticks."""
         if self._tick_handler is None:
-            raise RuntimeError("No tick handler set")
+            return
             
-        print("\nScheduler loop starting...")
-        
         while not self._stop_event.is_set():
             try:
                 self._tick_handler()
-            except Exception as e:
-                # Log the error but don't crash the scheduler
-                print(f"Error in tick handler: {e}")
-            
-            # Small delay to prevent CPU overload
+            except Exception:
+                pass
             Event().wait(self.tick_delay)
-        
-        print("Scheduler loop ending...")
     
     @property
     def is_running(self) -> bool:

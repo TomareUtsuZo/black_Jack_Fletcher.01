@@ -52,30 +52,23 @@ class TestGameScheduler:
         def dummy_handler() -> None:
             nonlocal tick_count
             tick_count += 1
-            print(f"Tick {tick_count} occurred")
             event.set()
             
         # Start the scheduler and verify it's running
-        print("\nStarting scheduler...")
         scheduler.start(tick_handler=dummy_handler)
         assert scheduler.is_running
         
         # Wait for at least one tick
-        print("Waiting for first tick...")
-        event.wait(timeout=2.0)
+        assert event.wait(timeout=2.0), "Scheduler did not tick within timeout"
         initial_tick_count = tick_count
-        print(f"Got {initial_tick_count} ticks before stopping")
         
         # Stop the scheduler and verify it stopped
-        print("Stopping scheduler...")
         scheduler.stop()
         assert not scheduler.is_running
         
-        # Wait a moment and verify no more ticks occurred
-        print("Waiting to verify no more ticks...")  # type: ignore[unreachable]
-        event.wait(timeout=2.0)
-        print(f"Final tick count: {tick_count} (should equal {initial_tick_count})")
-        assert tick_count == initial_tick_count
+        # Wait a bit and verify tick count hasn't changed
+        Event().wait(0.5)  # type: ignore[unreachable]
+        assert tick_count == initial_tick_count, "Tick count changed after stop"
     
     def test_multiple_stop_calls_safe(self) -> None:
         """Test that multiple stop calls don't raise errors."""
