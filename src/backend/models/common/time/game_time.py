@@ -18,6 +18,18 @@ from datetime import datetime, timedelta, timezone
 from typing import Union, Optional, ClassVar, Dict, Any
 from threading import Lock
 from .time_zone import GameTimeZone
+from .time_interface import TimeInterface
+
+def authorized_caller_only(func):
+    """Decorator to restrict method access to authorized modules only."""
+    def wrapper(self, *args, **kwargs):
+        import inspect
+        caller_frame = inspect.stack()[1]
+        caller_module = inspect.getmodule(caller_frame[0])
+        if caller_module and caller_module.__name__ != 'src.backend.models.game_state_manager':
+            raise PermissionError("This method can only be called from authorized modules like GameStateManager")
+        return func(self, *args, **kwargs)
+    return wrapper
 
 @dataclass(frozen=True)
 class GameDuration:
@@ -120,8 +132,8 @@ class GameDuration:
         """Create duration from days."""
         return cls(days * 86400)
 
-@dataclass(frozen=True)
-class GameTime:
+@dataclass
+class GameTime(TimeInterface):
     """
     Represents a specific point in game time.
     
@@ -253,6 +265,14 @@ class GameTime:
     def default_start_time(cls) -> 'GameTime':
         """Get the default game start time (Pearl Harbor attack)."""
         return cls(cls.PEARL_HARBOR_ATTACK)
+
+    @authorized_caller_only
+    def get_time_state(self):
+        """Get the current time state - restricted access method."""
+        return {
+            'current_time': self._time.isoformat(),
+            'time_zone': self._time_zone.name if self._time_zone else None
+        }
 
 @dataclass(init=False)
 class GameTimeManager:

@@ -16,6 +16,7 @@ from .common.time.game_scheduler import GameScheduler
 from .units.unit import Unit
 from .units.types.unit_type import UnitType
 from src.backend.models.units.unit_interface import UnitInterface
+from src.backend.models.common.time.time_interface import TimeInterface
 
 class GameState(Enum):
     """Game state enumeration"""
