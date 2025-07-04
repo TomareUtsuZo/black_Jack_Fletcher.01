@@ -15,6 +15,7 @@ from .common.time import GameTime, GameDuration, GameTimeManager
 from .common.time.game_scheduler import GameScheduler
 from .units.unit import Unit
 from .units.types.unit_type import UnitType
+from src.backend.models.units.unit_interface import UnitInterface
 
 class GameState(Enum):
     """Game state enumeration"""
@@ -200,9 +201,9 @@ class UnitManager:
     - Unit state updates
     - Unit queries and lookups
     """
-    _units: Dict[str, Unit] = field(default_factory=dict)
+    _units: Dict[str, UnitInterface] = field(default_factory=dict)
     
-    def add_unit(self, unit_type: UnitType, initial_state: UnitInitialState) -> str:
+    def add_unit(self, unit: UnitInterface, initial_state: UnitInitialState) -> str:
         """Add a new unit."""
         # TODO: Implement unit creation
         raise NotImplementedError
@@ -212,11 +213,11 @@ class UnitManager:
         # TODO: Implement unit removal
         raise NotImplementedError
     
-    def get_unit(self, unit_id: str) -> Optional[Unit]:
+    def get_unit(self, unit_id: str) -> Optional[UnitInterface]:
         """Get a unit by ID."""
         return self._units.get(unit_id)
     
-    def get_all_units(self) -> List[Unit]:
+    def get_all_units(self) -> List[UnitInterface]:
         """Get all units."""
         return list(self._units.values())
     
@@ -345,11 +346,11 @@ class GameStateManager:
         """Remove a unit."""
         self._unit_manager.remove_unit(unit_id)
     
-    def get_unit(self, unit_id: str) -> Optional[Unit]:
+    def get_unit(self, unit_id: str) -> Optional[UnitInterface]:
         """Get a unit by ID."""
         return self._unit_manager.get_unit(unit_id)
     
-    def get_all_units(self) -> List[Unit]:
+    def get_all_units(self) -> List[UnitInterface]:
         """Get all units."""
         return self._unit_manager.get_all_units()
     

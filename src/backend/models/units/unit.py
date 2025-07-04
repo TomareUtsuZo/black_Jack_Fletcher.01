@@ -3,10 +3,11 @@
 from dataclasses import dataclass, field
 from src.backend.models.common import Position
 from src.backend.models.common.geometry.nautical_miles import NauticalMiles
-from typing import Dict, Optional, Protocol
+from typing import Dict, Optional, Protocol, Any
 from uuid import UUID, uuid4
 
 from .types.unit_type import UnitType
+from .unit_interface import UnitInterface
 
 class UnitModule(Protocol):
     """Base protocol that all unit modules must implement"""
@@ -41,7 +42,7 @@ class UnitAttributes:
     crew: int  # Standard complement (probably not relevant, but good for stories)
     tonnage: float  # Tonnage of the ship (probably not relevant, but good for stories)
 
-class Unit:
+class Unit(UnitInterface):
     """
     Core Unit class that manages unit state and coordinates between modules.
     Each specialized capability (attack, movement, etc.) is handled by a dedicated module.
@@ -198,11 +199,21 @@ class Unit:
             raise ValueError(f"Speed cannot exceed maximum speed of {self.attributes.max_speed}")
         self.attributes.current_speed = speed
     
+    def _validate_task_force(self, task_force: Optional[str]) -> bool:
+        # Basic validation: Ensure task_force is a non-empty string if provided
+        if task_force is not None and not isinstance(task_force, str):
+            return False
+        if task_force and not task_force.strip():  # Check for non-empty string
+            return False
+        return True  # Valid if it passes checks
+    
     def assign_to_task_force(self, task_force: Optional[str]) -> None:
-        """
-        Assign the unit to a task force
-        
-        Args:
-            task_force: The task force identifier, or None to remove from current task force
-        """
-        self.attributes.task_force_assigned_to = task_force 
+        if task_force is not None and not self._validate_task_force(task_force):
+            raise ValueError("Invalid task force")
+        self.attributes.task_force_assigned_to = task_force
+    
+    def get_unit_state(self) -> Dict[str, Any]:
+        return {
+            'unit_id': str(self.attributes.unit_id),
+            'task_force': self.attributes.task_force_assigned_to,
+        } 

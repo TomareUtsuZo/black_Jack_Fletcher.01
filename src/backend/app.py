@@ -7,6 +7,8 @@ from typing import Any
 from flask import Flask
 from flask_socketio import SocketIO
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))  # Add project root to PATH
 from src.backend.services.game_service import game_manager
 
 # Get the absolute path to the frontend directory
@@ -15,7 +17,7 @@ frontend_dir: str = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'
 app: Flask = Flask(__name__,
            template_folder=os.path.join(frontend_dir, 'views', 'templates'),
            static_folder=os.path.join(frontend_dir, 'views', 'static'))
-socketio: SocketIO = SocketIO(app)
+socketio: SocketIO = SocketIO(app, async_mode='threading')
 
 # Import routes after app creation to avoid circular imports
 from src.backend.routes.game_routes import game_routes
