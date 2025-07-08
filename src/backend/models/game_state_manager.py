@@ -17,6 +17,7 @@ from .units.unit import Unit
 from .units.types.unit_type import UnitType
 from src.backend.models.units.unit_interface import UnitInterface
 from src.backend.models.common.time.time_interface import TimeInterface
+import logging
 
 class GameState(Enum):
     """Game state enumeration"""
@@ -329,9 +330,11 @@ class GameStateManager:
         2. Time advancement
         3. Unit updates
         """
+        # Log a message for each game tick to indicate it has occurred
+        print(f"Game tick occurred at {self.current_time}")
         if not self._state_machine.can_process_tick():
             return
-            
+        
         try:
             self._time_controller.advance_time()
             self._unit_manager.update_unit_states()
