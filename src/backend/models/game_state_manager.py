@@ -18,6 +18,7 @@ from .units.types.unit_type import UnitType
 from src.backend.models.units.unit_interface import UnitInterface
 from src.backend.models.common.time.time_interface import TimeInterface
 import logging
+import uuid
 
 class GameState(Enum):
     """Game state enumeration"""
@@ -341,10 +342,27 @@ class GameStateManager:
         except ValueError as e:
             self._handle_time_limit_reached(e)
     
-    # Delegate unit operations to UnitManager
+    def reset_state(self) -> None:
+        # Self-comment: Stops the scheduler if running, then resets the game state to initial conditions
+        try:
+            self._time_controller.stop_scheduler()  # Self-comment: Stop the scheduler to avoid conflicts
+        except Exception as e:
+            logging.warning(f'Warning: Failed to stop scheduler during reset: {str(e)}')  # Self-comment: Log any issues but continue
+        self._state_machine._state = GameState.INITIALIZING
+        self._unit_manager._units = {}  # Clear all units
+        logging.info('Game state reset to initial conditions')  # Log the reset for debugging
+    
     def add_unit(self, unit_type: UnitType, initial_state: UnitInitialState) -> str:
-        """Add a new unit."""
-        return self._unit_manager.add_unit(unit_type, initial_state)
+        # Note: Keeping this method for future use, but not calling it in start_game
+        try:
+            new_unit = Unit(unit_type, initial_state)  # Assuming Unit is the class from units/unit.py
+            unit_id = str(uuid.uuid4())  # Generate a unique ID for the unit
+            self._unit_manager.add_unit(new_unit, initial_state)  # Add to the unit manager
+            logging.info(f'Unit added successfully with ID: {unit_id}')  # Log success for debugging
+            return unit_id
+        except Exception as e:
+            logging.error(f'Error adding unit: {str(e)}')  # Log any errors
+            raise  # Re-raise the error for the caller to handle
     
     def remove_unit(self, unit_id: str) -> None:
         """Remove a unit."""

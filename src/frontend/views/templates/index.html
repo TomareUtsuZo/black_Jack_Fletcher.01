@@ -6,15 +6,18 @@
 <div class="game-container">
     <h1>Welcome to the Game</h1>
     <div id="game-board"></div>
-    <div id="game-controls"></div>
+    <div id="game-controls">
+        <button id="new-game-button">New Game</button>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_scripts %}
-<script>
-    // Any page-specific initialization can go here
-    document.addEventListener('DOMContentLoaded', () => {
-        console.log('Game initialized');
-    });
-</script>
+    <script src="/static/js/main.js"></script>  <!-- Self-comment: Includes the compiled JavaScript from main.ts -->
+    <script>
+        // Any page-specific initialization can go here
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('Game initialized');
+        });
+    </script>
 {% endblock %} 

@@ -8,8 +8,11 @@ from flask import Flask
 from flask_socketio import SocketIO
 import os
 import sys
+import logging  # Import logging if not already present
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))  # Add project root to PATH
 from src.backend.services.game_service import game_manager
+
+logging.basicConfig(level=logging.INFO)  # Self-comment: Set up basic logging configuration
 
 # Get the absolute path to the frontend directory
 frontend_dir: str = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
@@ -17,12 +20,16 @@ frontend_dir: str = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'
 app: Flask = Flask(__name__,
            template_folder=os.path.join(frontend_dir, 'views', 'templates'),
            static_folder=os.path.join(frontend_dir, 'views', 'static'))
+
+logging.info('Flask app created successfully')  # Self-comment: Log app creation
+
 socketio: SocketIO = SocketIO(app, async_mode='threading')
 
 # Import routes after app creation to avoid circular imports
 from src.backend.routes.game_routes import game_routes
 
 app.register_blueprint(game_routes)
+logging.info('Game routes blueprint registered')  # Self-comment: Log blueprint registration
 
 def start_game_manager() -> None:
     """Start the game manager if we're in the main process."""
@@ -36,6 +43,7 @@ def cleanup_game_manager() -> None:
 
 if __name__ == '__main__':
     try:
+        logging.info('Starting the game manager and server')  # Self-comment: Log server start
         # Set environment to production to disable reloader
         os.environ['FLASK_ENV'] = 'production'
         start_game_manager()

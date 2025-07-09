@@ -8,6 +8,9 @@ from flask import Blueprint, render_template, jsonify, request, Response
 from flask_socketio import emit, join_room, leave_room
 from ..models import GameState, PlayerState
 from ..services.game_service import game_manager
+from src.backend.models.units.test_ships import get_all_test_ships
+from src.backend.models.game_state_manager import GameStateManager
+import logging  # Import logging for debugging
 
 game_routes: Blueprint = Blueprint('game', __name__)
 
@@ -66,4 +69,16 @@ def create_game() -> Response:
 def join_game(game_id: str) -> Response:
     """Join an existing game."""
     # Implementation will be added later
-    return jsonify({'status': 'joined'}) 
+    return jsonify({'status': 'joined'})
+
+@game_routes.route('/start_game', methods=['POST'])
+def start_game():
+    try:
+        logging.info('Received POST request to /start_game and resetting state')  # Self-comment: Log the request and state reset
+        gsm = GameStateManager.get_instance()
+        gsm.reset_state()  # Self-comment: Reset the game state to initial conditions
+        gsm.start()  # Self-comment: Start the game after reset
+        return jsonify({"status": "Game started and reset successfully"}), 200
+    except Exception as e:
+        logging.error(f'Error in start_game: {str(e)}')  # Self-comment: Log any errors for debugging
+        return jsonify({"error": str(e)}), 500 
