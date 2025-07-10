@@ -17,21 +17,20 @@ from .units.unit import Unit
 from .units.types.unit_type import UnitType
 from src.backend.models.units.unit_interface import UnitInterface
 from src.backend.models.common.time.time_interface import TimeInterface
+from .common.geometry.position import Position  # Add Position import
 import logging
 import uuid
+from .scenario import Scenario  # Import the new Scenario class
 
 class GameState(Enum):
-    """Game state enumeration"""
-    INITIALIZING = auto()
-    RUNNING = auto()
-    PAUSED = auto()
-    COMPLETED = auto()
-
-    def __eq__(self, other: object) -> bool:
-        """Compare game states."""
-        if not isinstance(other, GameState):
-            return NotImplemented
-        return self.value == other.value
+    """
+    Enum representing the possible states of the game.
+    """
+    INITIALIZING = 'initializing'
+    RUNNING = 'running'
+    PAUSED = 'paused'
+    COMPLETED = 'completed'
+    ERROR = 'error'
 
 class UnitInitialState(TypedDict):
     """Type definition for unit initialization parameters"""
@@ -126,7 +125,7 @@ class GameTimeController:
     - Allows for dependency injection of time management
     """
     # The GameTimeManager can be injected for testing or advanced usage
-    _init_time_manager: Optional[GameTimeManager]
+    _init_time_manager: Optional[GameTimeManager] = None
     
     # Time rate constants
     DEFAULT_TIME_RATE: Final[GameDuration] = GameDuration.from_minutes(1)
@@ -194,6 +193,16 @@ class GameTimeController:
         """Stop the game scheduler."""
         self._scheduler.stop()
 
+    def pause(self) -> None:
+        """Pause the game scheduler."""
+        self.stop_scheduler()
+
+    def resume(self) -> None:
+        """Resume the game scheduler."""
+        def advance_time_wrapper() -> None:
+            self._time_manager.advance_time(self._time_rate)
+        self.start_scheduler(advance_time_wrapper)
+
 @dataclass
 class UnitManager:
     """
@@ -229,6 +238,31 @@ class UnitManager:
         # TODO: Implement unit state updates
         pass
 
+    @property
+    def game_state(self) -> GameState:
+        """Get current game state."""
+        return self._state_machine.current_state
+    
+    @game_state.setter
+    def game_state(self, value: GameState) -> None:
+        """Set the game state."""
+        self._state_machine._state = value
+    
+    @property
+    def is_paused(self) -> bool:
+        """Check if game is paused."""
+        return self._state_machine.is_paused
+    
+    @property
+    def _state(self) -> GameState:
+        """Direct state access for testing."""
+        return self._state_machine.current_state
+    
+    @_state.setter
+    def _state(self, value: GameState) -> None:
+        """Direct state setting for testing."""
+        self._state_machine._state = value
+
 @dataclass
 class GameStateManager:
     """
@@ -252,8 +286,13 @@ class GameStateManager:
     - Clean separation: Each layer has a single responsibility
     """
     # Optional time manager injection for testing or advanced usage
-    # If None (default), GameTimeController will create its own GameTimeManager
     time_manager: Optional[GameTimeManager] = field(default=None)
+    
+    # Scenario-related fields with proper type annotations
+    scenario: Optional[Scenario] = None
+    ships: List[Any] = field(default_factory=list)
+    map_center: Optional['Position'] = None  # Import Position if needed
+    map_boundaries: Dict[str, 'Position'] = field(default_factory=dict)  # Import Position if needed
     
     # Error messages
     ERROR_ALREADY_INSTANTIATED: Final[str] = "GameStateManager already instantiated"
@@ -305,18 +344,27 @@ class GameStateManager:
     
     def stop(self) -> None:
         """Stop the game."""
-        if self._state_machine.current_state == GameState.COMPLETED:
+        if self.game_state == GameState.COMPLETED:
             return
         self._time_controller.stop_scheduler()
         self._state_machine.complete()
     
     def pause(self) -> None:
         """Pause the game."""
-        self._state_machine.pause()
+        if self.game_state == GameState.RUNNING:
+            self._time_controller.pause()
+            self._state_machine.pause()
     
-    def unpause(self) -> None:
-        """Unpause the game."""
-        self._state_machine.unpause()
+    def resume(self) -> None:
+        """Resume the game from a paused state."""
+        if self.game_state == GameState.PAUSED:
+            self._time_controller.resume()
+            self._state_machine.unpause()
+    
+    def complete(self) -> None:
+        """Mark the game as completed."""
+        self._time_controller.stop_scheduler()
+        self._state_machine.complete()
     
     def _handle_time_limit_reached(self, error: ValueError) -> None:
         """Handle time limit reached error."""
@@ -382,28 +430,30 @@ class GameStateManager:
         """Get current game time."""
         return self._time_controller.current_time
     
+    def set_time_rate(self, rate: GameDuration) -> None:
+        """Set the game time rate."""
+        self._time_controller.set_time_rate(rate)
+
     @property
     def time_rate(self) -> GameDuration:
-        """Get current time rate."""
+        """Get the current time rate."""
         return self._time_controller.time_rate
-    
-    def set_time_rate(self, new_rate: GameDuration) -> None:
-        """Set new time rate."""
-        self._time_controller.set_time_rate(new_rate)
-    
-    def set_time_rate_seconds(self, seconds_per_tick: float) -> None:
-        """Set time rate in seconds per tick."""
-        self._time_controller.set_time_rate_seconds(seconds_per_tick)
-    
-    def set_time_rate_minutes(self, minutes_per_tick: float) -> None:
-        """Set time rate in minutes per tick."""
-        self._time_controller.set_time_rate_minutes(minutes_per_tick)
-    
+
+    @time_rate.setter
+    def time_rate(self, value: float) -> None:
+        """Set the time rate using a float value in seconds."""
+        self.set_time_rate(GameDuration.from_seconds(value))
+
     # State queries and access
     @property
     def game_state(self) -> GameState:
         """Get current game state."""
         return self._state_machine.current_state
+    
+    @game_state.setter
+    def game_state(self, value: GameState) -> None:
+        """Set the game state."""
+        self._state_machine._state = value
     
     @property
     def is_paused(self) -> bool:
@@ -451,4 +501,26 @@ class GameStateManager:
             damage_info: Damage type and amount information
         """
         # TODO: Implement damage application logic
-        raise NotImplementedError 
+        raise NotImplementedError
+
+    def load_default_scenario(self):
+        from .scenario import Scenario
+        self.scenario = Scenario.create_default_scenario()
+        self.ships = self.scenario.ships
+        self.map_center = self.scenario.center_position
+        self.map_boundaries = self.scenario.get_map_boundaries()
+
+def initialize_game_state() -> 'GameStateManager':
+    """
+    Initialize or get the game state manager.
+    
+    This function ensures we have a properly initialized GameStateManager
+    with a default scenario loaded.
+    
+    Returns:
+        The singleton GameStateManager instance
+    """
+    manager = GameStateManager.get_instance()
+    if manager.scenario is None:
+        manager.load_default_scenario()
+    return manager 
