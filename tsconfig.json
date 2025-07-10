@@ -1,19 +1,22 @@
 {
     "compilerOptions": {
         "target": "ES2020",
-        "module": "ES2020",
-        "strict": true,
-        "esModuleInterop": true,
+        "module": "none",
+        "strict": false,
+        "esModuleInterop": false,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "outDir": "./src/frontend/views/static/js/dist",
-        "rootDir": "./src/frontend/views/static/js",
-        "moduleResolution": "node"
+        "rootDir": "./src/frontend/views/static/js/src",
+        "moduleResolution": "classic",
+        "allowJs": true,
+        "noEmitOnError": true
     },
     "include": [
-        "src/frontend/views/static/js/**/*"
+        "src/frontend/views/static/js/src/**/*"
     ],
     "exclude": [
-        "node_modules"
+        "node_modules",
+        "dist"
     ]
 } 

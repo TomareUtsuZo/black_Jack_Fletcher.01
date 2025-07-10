@@ -13,7 +13,12 @@
 {% endblock %}
 
 {% block extra_scripts %}
-    <script src="/static/js/main.js"></script>  <!-- Self-comment: Includes the compiled JavaScript from main.ts -->
+    <!-- Load Leaflet CSS first -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Load Leaflet JS before our script -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- Load our script without type="module" -->
+    <script src="/static/js/dist/main.js"></script>
     <script>
         // Any page-specific initialization can go here
         document.addEventListener('DOMContentLoaded', () => {
