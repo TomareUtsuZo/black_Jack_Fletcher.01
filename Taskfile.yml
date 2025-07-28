@@ -20,7 +20,7 @@ tasks:
   run-flask:
     desc: Run Flask application
     cmds:
-      - python -m backend.src.app
+      - python -m src.backend.app
 
   test:
     desc: Run all tests
