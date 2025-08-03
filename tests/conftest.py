@@ -1,11 +1,23 @@
 """
 Pytest configuration and shared fixtures.
 """
+import sys
+import os
 from typing import Dict, Generator
 import pytest
 from flask import Flask
 from flask.testing import FlaskClient
 from src.backend.app import app as flask_app
+
+def pytest_configure(config):
+    try:
+        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+        src_path = os.path.join(project_root, 'src')
+        if src_path not in sys.path:
+            sys.path.insert(0, src_path)
+        print(f'Added to sys.path: {src_path}')  # Debug print
+    except Exception as e:
+        print(f'Error adding path: {e}')
 
 @pytest.fixture
 def app() -> Flask:
