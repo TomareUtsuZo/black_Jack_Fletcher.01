@@ -41,7 +41,11 @@ class ShipSpecification:
     max_fuel: float
     current_fuel: float
     crew: int  # Standard complement (probably not relevant, but good for stories)
-    tonnage: float  # Tonnage of the ship (probably not relevant, but good for stories)
+    tonnage: int  # Tonnage of the ship (probably not relevant, but good for stories)
+
+    # Detection
+    visual_range: NauticalMiles  # Range for visual detection in nautical miles
+    visual_detection_rate: float  # Probability rate for visual detection (e.g., 0.0 to 1.0)
 
 # Test Ships - Using real Fletcher-class destroyers and other historical ships as examples
 
@@ -68,7 +72,9 @@ USS_FLETCHER = ShipSpecification(
     max_fuel=5500.0,  # Range at 15 knots
     current_fuel=5500.0,  # Start with full fuel
     crew=273,  # Standard complement
-    tonnage=2100.0  # Standard displacement
+    tonnage=2100,  # Updated to integer
+    visual_range=NauticalMiles(5),
+    visual_detection_rate=0.8,
 )
 
 USS_TALEN = ShipSpecification(
@@ -89,7 +95,9 @@ USS_TALEN = ShipSpecification(
     max_fuel=5500.0,
     current_fuel=5500.0,
     crew=273,
-    tonnage=2100.0
+    tonnage=2100,  # Updated to integer
+    visual_range=NauticalMiles(5),
+    visual_detection_rate=0.8,
 )
 
 # IJN Yukikaze - Kagero-class destroyer
@@ -111,7 +119,9 @@ IJN_YUKIKAZE = ShipSpecification(
     max_fuel=5000.0,  # Historical range at 18 knots
     current_fuel=5000.0,
     crew=240,  # Historical crew complement
-    tonnage=2033.0  # Historical standard displacement
+    tonnage=2033,  # Updated to integer
+    visual_range=NauticalMiles(6),  # Adjusted slightly for historical accuracy if needed
+    visual_detection_rate=0.7,
 )
 
 # Fictional pirate ship based on historical pirate vessels
@@ -133,7 +143,9 @@ PIRATE_QUEEN = ShipSpecification(
     max_fuel=3000.0,  # Smaller fuel capacity
     current_fuel=3000.0,
     crew=150,  # Typical pirate crew size
-    tonnage=1500.0  # Smaller than military vessels
+    tonnage=1500,  # Updated to integer
+    visual_range=NauticalMiles(4),  # Lower for a fictional pirate ship
+    visual_detection_rate=0.6,
 )
 
 # Dictionary of all test ships for easy lookup
