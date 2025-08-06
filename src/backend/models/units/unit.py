@@ -40,7 +40,10 @@ class UnitAttributes:
     max_fuel: float
     current_fuel: float
     crew: int  # Standard complement (probably not relevant, but good for stories)
-    tonnage: float  # Tonnage of the ship (probably not relevant, but good for stories)
+    tonnage: int  # Tonnage of the ship (probably not relevant, but good for stories)
+    visual_range: NauticalMiles  # Visual detection range in nautical miles
+    visual_detection_rate: float  # Detection rate for visual detection, a float value (e.g., 0.0 to 1.0 representing probability)
+
 
 class Unit(UnitInterface):
     """
@@ -66,7 +69,9 @@ class Unit(UnitInterface):
         max_fuel: float,
         current_fuel: float,
         crew: int,
-        tonnage: float
+        visual_range: NauticalMiles,
+        visual_detection_rate: float,  # Detection rate for visual detection
+        tonnage: int
     ) -> None:
         """
         Initialize a new Unit with the given attributes.
@@ -89,6 +94,8 @@ class Unit(UnitInterface):
             max_fuel: Maximum fuel capacity
             current_fuel: Current fuel level
             crew: Standard complement
+            visual_range: Visual detection range in nautical miles
+            visual_detection_rate: Detection rate for visual detection, a float value           (e.g., 0.0 to 1.0)
             tonnage: Ship's tonnage
         """
         self.attributes = UnitAttributes(
@@ -109,6 +116,8 @@ class Unit(UnitInterface):
             max_fuel=max_fuel,
             current_fuel=current_fuel,
             crew=crew,
+            visual_range=visual_range,
+            visual_detection_rate=visual_detection_rate,
             tonnage=tonnage
         )
         self._modules: Dict[str, UnitModule] = {}
@@ -199,6 +208,29 @@ class Unit(UnitInterface):
             raise ValueError(f"Speed cannot exceed maximum speed of {self.attributes.max_speed}")
         self.attributes.current_speed = speed
     
+    def perform_tick(self) -> None:
+        """
+        Perform internal tasks for the unit during a game tick.
+        
+        This method handles all unit-specific updates, such as detection and movement,
+        to encapsulate behavior and reduce conflicts.
+        """
+        # Handle movement if the module is present
+        movement_module = self.get_module('movement')
+        if movement_module:
+            # Assuming the movement module has a method to perform movement
+            movement_module.perform_movement()  # Call the movement logic
+    
+        # Handle detection if the module is present
+        detection_module = self.get_module('detection')
+        if detection_module:
+            detection_rate = self.attributes.visual_detection_rate
+            visual_range = self.attributes.visual_range
+            # detected_units would be called if needed
+            detected_units = detection_module.perform_visual_detection(detection_rate, 
+                                                                       visual_range)  
+        
+
     def _validate_task_force(self, task_force: Optional[str]) -> bool:
         # Basic validation: Ensure task_force is a non-empty string if provided
         if task_force is not None and not isinstance(task_force, str):
