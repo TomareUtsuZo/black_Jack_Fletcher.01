@@ -95,7 +95,7 @@ class Unit(UnitInterface):
             current_fuel: Current fuel level
             crew: Standard complement
             visual_range: Visual detection range in nautical miles
-            visual_detection_rate: Detection rate for visual detection, a float value (e.g., 0.0 to 1.0)
+            visual_detection_rate: Detection rate for visual detection, a float value           (e.g., 0.0 to 1.0)
             tonnage: Ship's tonnage
         """
         self.attributes = UnitAttributes(
@@ -226,7 +226,9 @@ class Unit(UnitInterface):
         if detection_module:
             detection_rate = self.attributes.visual_detection_rate
             visual_range = self.attributes.visual_range
-            detected_units = detection_module.perform_visual_detection(detection_rate, visual_range)  # This would be called if needed
+            # detected_units would be called if needed
+            detected_units = detection_module.perform_visual_detection(detection_rate, 
+                                                                       visual_range)  
         
 
     def _validate_task_force(self, task_force: Optional[str]) -> bool:
