@@ -8,6 +8,13 @@ from uuid import UUID, uuid4
 
 from .types.unit_type import UnitType
 from .unit_interface import UnitInterface
+import logging  # Import for logging functionality
+from enum import Enum  # Import for state tracking
+
+class UnitState(Enum):
+    OPERATING = 'operating'
+    SINKING = 'sinking'  # Unit is combat ineffective, dead in water, and taking on water, either the crew is still on board and/or heroic efforts might save ship. checks must be made each minute to discover if the ship has sunk. Damage control efforts must be tracked to determine if the ship will be sunk this time, and even possiblely the ship could be restored to operating. Further, the ship could be salavaged (by any side with the will and capability), and finally, the ships crew could be rescued or captured. The only weapons a sinking ship might be able to use are manual weapons, like 50 cal machine guns, small arms, and mechanical anti-aircraft weapons.
+    SUNK = 'sunk' # this is destroyed, and may no longer do any active operations. At the most, we might track the state of the surviving crew, to determine if they are rescued/captured.
 
 class UnitModule(Protocol):
     """Base protocol that all unit modules must implement"""
@@ -120,6 +127,8 @@ class Unit(UnitInterface):
             visual_detection_rate=visual_detection_rate,
             tonnage=tonnage
         )
+        self.state = UnitState.OPERATING  # Default state
+        self.crew_status = 'surviving'  # Default crew status; can be 'surviving', 'rescued', 'captured', etc.
         self._modules: Dict[str, UnitModule] = {}
     
     def add_module(self, name: str, module: UnitModule) -> None:
@@ -151,7 +160,7 @@ class Unit(UnitInterface):
     @property
     def is_alive(self) -> bool:
         """Check if the unit is still alive"""
-        return self.attributes.current_health > 0
+        return self.state != UnitState.SUNK
     
     @property
     def has_fuel(self) -> bool:
@@ -166,6 +175,12 @@ class Unit(UnitInterface):
             amount: Amount of damage to apply
         """
         self.attributes.current_health = max(0.0, self.attributes.current_health - amount)
+        if self.attributes.current_health <= 0:
+            self.state = UnitState.SUNK
+            # Crew status can be updated separately, e.g., via a new method
+            logging.info(f"{self.name} has been sunk, crew status: {self.crew_status}")
+        elif self.attributes.current_health < 0.2 * self.attributes.max_health:  # Example threshold for sinking
+            self.state = UnitState.SINKING
     
     def consume_fuel(self, amount: float) -> bool:
         """
@@ -231,6 +246,22 @@ class Unit(UnitInterface):
                                                                        visual_range)  
         
 
+    def perform_attack(self, target):
+        """Perform an attack on the target unit."""
+        damage = 10
+        if self.has_weapons():  # Using the existing weapons check
+            target.take_damage(damage)
+            logging.info(f"{self.name} attacked {target.name} for {damage} damage")
+        else:
+            logging.warning(f"{self.name} has no weapons")
+    
+    def update_crew_status(self, status: str) -> None:  # New method for updating crew status
+        """Update the crew status (e.g., 'surviving', 'rescued', 'captured')."""
+        if status in ['surviving', 'rescued', 'captured']:
+            self.crew_status = status
+        else:
+            logging.warning(f"Invalid crew status: {status}")
+
     def _validate_task_force(self, task_force: Optional[str]) -> bool:
         # Basic validation: Ensure task_force is a non-empty string if provided
         if task_force is not None and not isinstance(task_force, str):
@@ -249,3 +280,7 @@ class Unit(UnitInterface):
             'unit_id': str(self.attributes.unit_id),
             'task_force': self.attributes.task_force_assigned_to,
         } 
+
+    def has_weapons(self) -> bool:
+        """Temporarily check if the unit has weapons; always returns true for now."""
+        return True  # Placeholder to always allow attacks 

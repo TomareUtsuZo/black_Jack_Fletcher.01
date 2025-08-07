@@ -9,8 +9,11 @@ class Attack:
         
     def perform_attack(self):  # Method to execute the attack
         # Check if attacker can attack (simple condition for now)
-        if self.attacker.is_active():  # Assume is_active method exists in unit interface
-            self.target.apply_damage(self.damage)  # Apply damage to target
-            logging.info(f"{self.attacker.name} attacked {self.target.name} for {self.damage} damage")  # Log the attack event
+        if self.attacker.has_weapons():  # New check for weapons, temporarily always true
+            if self.attacker.is_active():  # Assume is_active method exists in unit interface
+                self.target.apply_damage(self.damage)  # Apply damage to target
+                logging.info(f"{self.attacker.name} attacked {self.target.name} for {self.damage} damage")  # Log the attack event
+            else:
+                logging.warning(f"{self.attacker.name} cannot attack")  # Warn if attacker is not active
         else:
-            logging.warning(f"{self.attacker.name} cannot attack")  # Warn if attacker is not active
+            logging.warning(f"{self.attacker.name} has no weapons")  # Warn if no weapons
