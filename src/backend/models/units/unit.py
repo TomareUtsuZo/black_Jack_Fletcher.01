@@ -6,7 +6,7 @@ from src.backend.models.common.geometry.nautical_miles import NauticalMiles
 from typing import Dict, Optional, Protocol, Any
 from uuid import UUID, uuid4
 
-from .types.unit_type import UnitType
+from .types.unit_type import UnitType as UnitType  # explicitly re-export
 from .unit_interface import UnitInterface
 import logging  # Import for logging functionality
 from enum import Enum  # Import for state tracking
@@ -57,6 +57,7 @@ class Unit(UnitInterface):
     Core Unit class that manages unit state and coordinates between modules.
     Each specialized capability (attack, movement, etc.) is handled by a dedicated module.
     """
+    state: UnitState  # Type annotation for state attribute
     def __init__(
         self,
         unit_id: UUID,
@@ -127,7 +128,7 @@ class Unit(UnitInterface):
             visual_detection_rate=visual_detection_rate,
             tonnage=tonnage
         )
-        self.state = UnitState.OPERATING  # Default state
+        self.state: UnitState = UnitState.OPERATING  # Default state
         self.crew_status = 'surviving'  # Default crew status; can be 'surviving', 'rescued', 'captured', etc.
         self._modules: Dict[str, UnitModule] = {}
     
@@ -161,6 +162,10 @@ class Unit(UnitInterface):
     def is_alive(self) -> bool:
         """Check if the unit is still alive"""
         return self.state != UnitState.SUNK
+        
+    def is_in_state(self, state: UnitState) -> bool:
+        """Check if the unit is in a specific state"""
+        return self.state == state
     
     @property
     def has_fuel(self) -> bool:
@@ -176,11 +181,9 @@ class Unit(UnitInterface):
         """
         self.attributes.current_health = max(0.0, self.attributes.current_health - amount)
         if self.attributes.current_health <= 0:
-            self.state = UnitState.SUNK
-            # Crew status can be updated separately, e.g., via a new method
-            logging.info(f"{self.name} has been sunk, crew status: {self.crew_status}")
-        elif self.attributes.current_health < 0.2 * self.attributes.max_health:  # Example threshold for sinking
             self.state = UnitState.SINKING
+            # Crew status can be updated separately, e.g., via a new method
+            logging.info(f"{self.attributes.name} has been sunk, crew status: {self.crew_status}")
     
     def consume_fuel(self, amount: float) -> bool:
         """
@@ -246,14 +249,19 @@ class Unit(UnitInterface):
                                                                        visual_range)  
         
 
-    def perform_attack(self, target):
-        """Perform an attack on the target unit."""
+    def perform_attack(self, target: 'Unit') -> None:
+        """
+        Perform an attack on the target unit.
+        
+        Args:
+            target: The unit to attack
+        """
         damage = 10
         if self.has_weapons():  # Using the existing weapons check
             target.take_damage(damage)
-            logging.info(f"{self.name} attacked {target.name} for {damage} damage")
+            logging.info(f"{self.attributes.name} attacked {target.attributes.name} for {damage} damage")
         else:
-            logging.warning(f"{self.name} has no weapons")
+            logging.warning(f"{self.attributes.name} has no weapons")
     
     def update_crew_status(self, status: str) -> None:  # New method for updating crew status
         """Update the crew status (e.g., 'surviving', 'rescued', 'captured')."""
