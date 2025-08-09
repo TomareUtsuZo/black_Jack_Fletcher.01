@@ -26,4 +26,8 @@ class UnitModule(Protocol):
         """Apply calculated damage to the target unit"""
         ...
         
+    def perform_upkeep(self) -> None:
+        """Perform any necessary upkeep after an attack (cooldowns, ammunition, etc.)"""
+        ...
+        
 
