@@ -3,7 +3,8 @@
 from dataclasses import dataclass, field
 from src.backend.models.common import Position
 from src.backend.models.common.geometry.nautical_miles import NauticalMiles
-from typing import Dict, List, Optional, Protocol, Any
+from typing import Dict, List, Optional, Any
+from .protocols.unit_module_protocol import UnitModule
 from uuid import UUID, uuid4
 
 from .types.unit_type import UnitType as UnitType  # explicitly re-export
@@ -16,27 +17,7 @@ class UnitState(Enum):
     SINKING = 'sinking'  # Unit is combat ineffective, dead in water, and taking on water, either the crew is still on board and/or heroic efforts might save ship. checks must be made each minute to discover if the ship has sunk. Damage control efforts must be tracked to determine if the ship will be sunk this time, and even possiblely the ship could be restored to operating. Further, the ship could be salavaged (by any side with the will and capability), and finally, the ships crew could be rescued or captured. The only weapons a sinking ship might be able to use are manual weapons, like 50 cal machine guns, small arms, and mechanical anti-aircraft weapons.
     SUNK = 'sunk' # this is destroyed, and may no longer do any active operations. At the most, we might track the state of the surviving crew, to determine if they are rescued/captured.
 
-class UnitModule(Protocol):
-    """Base protocol that all unit modules must implement"""
-    def initialize(self) -> None:
-        """Initialize the module"""
-        ...
-        
-    def calculate_attack_effectiveness(self, target: 'Unit') -> float:
-        """Calculate the effectiveness of an attack against the target"""
-        ...
-        
-    def delineate_legit_targets(self, detected_units: List['Unit']) -> List['Unit']:
-        """Filter detected units to determine legitimate targets"""
-        ...
-        
-    def choose_target_from_legit_options(self, legit_targets: List['Unit']) -> Optional['Unit']:
-        """Choose a target from the list of legitimate targets"""
-        ...
-        
-    def execute_attack(self, target: 'Unit') -> None:
-        """Execute an attack against a specific target"""
-        ...
+
 
 @dataclass
 class UnitAttributes:

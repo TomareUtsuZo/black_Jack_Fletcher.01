@@ -1,6 +1,7 @@
 import logging  # Import for logging errors or events
 from typing import List, Optional
-from src.backend.models.units.unit import Unit, UnitModule
+from src.backend.models.units.unit import Unit
+from src.backend.models.units.protocols.unit_module_protocol import UnitModule
 
 # Define a basic Attack class for handling combat logic
 class Attack(UnitModule):
@@ -92,6 +93,17 @@ class Attack(UnitModule):
         
         return base_damage
         
+    def send_damage_to_target(self, target: Unit, damage: float) -> None:
+        """
+        Apply calculated damage to the target unit.
+        
+        Args:
+            target: The unit receiving the damage
+            damage: Amount of damage to apply
+        """
+        target.take_damage(damage)
+        logging.info(f"{self.attacker.attributes.name} dealt {damage} damage to {target.attributes.name}")
+
     def execute_attack(self, target: Unit) -> None:
         """
         Execute an attack against a specific target.
@@ -100,9 +112,10 @@ class Attack(UnitModule):
             target: The unit to attack
         """
         if self.attacker.has_weapons():
-            # Calculate and apply damage
+            # Calculate damage
             damage = self.calculate_attack_effectiveness(target)
-            target.take_damage(damage)
-            logging.info(f"{self.attacker.attributes.name} attacked {target.attributes.name} for {damage} damage")
+            # Apply the damage
+            self.send_damage_to_target(target, damage)
+            logging.info(f"{self.attacker.attributes.name} attacked {target.attributes.name}")
         else:
             logging.warning(f"{self.attacker.attributes.name} has no weapons")

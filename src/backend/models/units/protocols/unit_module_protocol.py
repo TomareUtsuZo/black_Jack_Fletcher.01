@@ -1,0 +1,31 @@
+"""Protocol definition for unit modules."""
+
+from typing import List, Optional, Protocol, runtime_checkable
+from ..unit_interface import UnitInterface
+
+@runtime_checkable
+class UnitModule(Protocol):
+    """Base protocol that all unit modules must implement"""
+    def initialize(self) -> None:
+        """Initialize the module"""
+        ...
+        
+    def calculate_attack_effectiveness(self, target: UnitInterface) -> float:
+        """Calculate the effectiveness of an attack against the target"""
+        ...
+        
+    def delineate_legit_targets(self, detected_units: List[UnitInterface]) -> List[UnitInterface]:
+        """Filter detected units to determine legitimate targets"""
+        ...
+        
+    def choose_target_from_legit_options(self, legit_targets: List[UnitInterface]) -> Optional[UnitInterface]:
+        """Choose a target from the list of legitimate targets"""
+        ...
+        
+    def send_damage_to_target(self, target: UnitInterface, damage: float) -> None:
+        """Apply calculated damage to the target unit"""
+        ...
+        
+    def execute_attack(self, target: UnitInterface) -> None:
+        """Execute an attack against a specific target"""
+        ...

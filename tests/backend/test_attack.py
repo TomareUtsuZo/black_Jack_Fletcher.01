@@ -4,6 +4,47 @@ from src.backend.models.common.geometry.nautical_miles import NauticalMiles
 from src.backend.models.common.geometry.position import Position
 import uuid
 
+def test_protocol_implementation() -> None:
+    """Test that Attack properly implements UnitModule protocol"""
+    from src.backend.models.units.protocols.unit_module_protocol import UnitModule
+    from src.backend.models.units.modules.attack import Attack
+    
+    # Create a simple unit for testing
+    unit = Unit(
+        unit_id=uuid.uuid4(),
+        name="Test Unit",
+        hull_number="T1",
+        unit_type=UnitType.DESTROYER,
+        task_force_assigned_to=None,
+        ship_class="TestClass",
+        faction="TestFaction",
+        position=Position(x=0, y=0),
+        destination=None,
+        max_speed=NauticalMiles(30),
+        cruise_speed=NauticalMiles(20),
+        current_speed=NauticalMiles(15),
+        max_health=100.0,
+        current_health=100.0,
+        max_fuel=100.0,
+        current_fuel=100.0,
+        crew=50,
+        visual_range=NauticalMiles(20),
+        visual_detection_rate=0.5,
+        tonnage=5000
+    )
+    
+    # Verify Attack implements UnitModule
+    attack_module = Attack(attacker=unit)
+    assert isinstance(attack_module, UnitModule), "Attack should implement UnitModule protocol"
+    
+    # Verify all protocol methods are implemented
+    assert hasattr(attack_module, 'initialize')
+    assert hasattr(attack_module, 'calculate_attack_effectiveness')
+    assert hasattr(attack_module, 'delineate_legit_targets')
+    assert hasattr(attack_module, 'choose_target_from_legit_options')
+    assert hasattr(attack_module, 'send_damage_to_target')
+    assert hasattr(attack_module, 'execute_attack')
+
 def test_attack() -> None:  # Added return type to fix mypy error
     # Set up test units
     unit1_position = Position(x=0, y=0)
@@ -176,3 +217,37 @@ def test_attack() -> None:  # Added return type to fix mypy error
     enemy_target.take_damage(15)  # This brings health to 0
     assert enemy_target.attributes.current_health == 0.0  # Verify health is exactly 0
     assert enemy_target.is_in_state(UnitState.SINKING)  # Ship should be sinking when health reaches 0
+    
+    # Test direct damage application
+    test_target = Unit(
+        unit_id=uuid.uuid4(),
+        name="Test Target",
+        hull_number="TT1",
+        unit_type=UnitType.DESTROYER,
+        task_force_assigned_to=None,
+        ship_class="TestClass",
+        faction="EnemyFaction",
+        position=Position(x=0, y=0),
+        destination=None,
+        max_speed=NauticalMiles(30),
+        cruise_speed=NauticalMiles(20),
+        current_speed=NauticalMiles(15),
+        max_health=100.0,
+        current_health=100.0,
+        max_fuel=100.0,
+        current_fuel=100.0,
+        crew=50,
+        visual_range=NauticalMiles(20),
+        visual_detection_rate=0.5,
+        tonnage=5000
+    )
+    
+    # Test sending specific damage amount
+    attack_module.send_damage_to_target(test_target, 25.0)
+    assert test_target.attributes.current_health == 75.0, "Direct damage application should reduce health by exact amount"
+    assert test_target.is_in_state(UnitState.OPERATING), "Unit should remain operating above 0 health"
+    
+    # Test sending lethal damage
+    attack_module.send_damage_to_target(test_target, 75.0)
+    assert test_target.attributes.current_health == 0.0, "Lethal damage should reduce health to 0"
+    assert test_target.is_in_state(UnitState.SINKING), "Unit should transition to sinking state at 0 health"
