@@ -8,7 +8,11 @@ def test_attack() -> None:  # Added return type to fix mypy error
     # Set up test units
     unit1_position = Position(x=0, y=0)
     unit2_position = Position(x=1, y=1)
-    unit1 = Unit(
+    friendly_unit_position = Position(x=2, y=2)
+    sunk_unit_position = Position(x=3, y=3)
+    
+    # Create attacker unit
+    attacker = Unit(
         unit_id=uuid.uuid4(),
         name="Attacker",
         hull_number="A1",
@@ -31,9 +35,10 @@ def test_attack() -> None:  # Added return type to fix mypy error
         tonnage=5000
     )
     
-    unit2 = Unit(
+    # Create enemy target unit
+    enemy_target = Unit(
         unit_id=uuid.uuid4(),
-        name="Target",
+        name="Enemy Target",
         hull_number="T1",
         unit_type=UnitType.DESTROYER,
         task_force_assigned_to=None,
@@ -54,23 +59,81 @@ def test_attack() -> None:  # Added return type to fix mypy error
         tonnage=5000
     )
     
-    # Test attack logic
-    assert unit1.is_in_state(UnitState.OPERATING)  # Initial state check
-    assert unit2.is_in_state(UnitState.OPERATING)  # Initial state check
+    # Create friendly unit (same faction as attacker)
+    friendly_unit = Unit(
+        unit_id=uuid.uuid4(),
+        name="Friendly Unit",
+        hull_number="F1",
+        unit_type=UnitType.DESTROYER,
+        task_force_assigned_to=None,
+        ship_class="TestClass",
+        faction="TestFaction",  # Same faction as attacker
+        position=friendly_unit_position,
+        destination=None,
+        max_speed=NauticalMiles(30),
+        cruise_speed=NauticalMiles(20),
+        current_speed=NauticalMiles(15),
+        max_health=100.0,
+        current_health=100.0,
+        max_fuel=100.0,
+        current_fuel=100.0,
+        crew=50,
+        visual_range=NauticalMiles(20),
+        visual_detection_rate=0.5,
+        tonnage=5000
+    )
     
-    # Simulate an attack
-    unit1.perform_attack(target=unit2)
+    # Create sunk enemy unit
+    sunk_enemy = Unit(
+        unit_id=uuid.uuid4(),
+        name="Sunk Enemy",
+        hull_number="S1",
+        unit_type=UnitType.DESTROYER,
+        task_force_assigned_to=None,
+        ship_class="TestClass",
+        faction="EnemyFaction",
+        position=sunk_unit_position,
+        destination=None,
+        max_speed=NauticalMiles(30),
+        cruise_speed=NauticalMiles(20),
+        current_speed=NauticalMiles(15),
+        max_health=100.0,
+        current_health=0.0,  # Start with 0 health
+        max_fuel=100.0,
+        current_fuel=100.0,
+        crew=50,
+        visual_range=NauticalMiles(20),
+        visual_detection_rate=0.5,
+        tonnage=5000
+    )
+    sunk_enemy.take_damage(1)  # This will trigger the transition to SINKING state
     
-    # Verify damage and state changes
-    assert unit2.attributes.current_health == 90.0  # After taking default 10 damage
-    assert unit2.is_in_state(UnitState.OPERATING)  # Should still be operating
+    # Test initial states
+    assert attacker.is_in_state(UnitState.OPERATING)
+    assert enemy_target.is_in_state(UnitState.OPERATING)
+    assert friendly_unit.is_in_state(UnitState.OPERATING)
+    assert sunk_enemy.is_in_state(UnitState.SINKING)
+    
+    # Test targeting logic - should only attack enemy_target (not friendly or sunk units)
+    detected_units = [enemy_target, friendly_unit, sunk_enemy]
+    attacker.perform_attack(detected_units)
+    
+    # Verify only enemy_target took damage
+    assert enemy_target.attributes.current_health == 90.0  # Took 10 damage
+    assert friendly_unit.attributes.current_health == 100.0  # No damage
+    assert sunk_enemy.attributes.current_health == 0.0  # No change
+    
+    # Verify states remained appropriate
+    assert enemy_target.is_in_state(UnitState.OPERATING)
+    assert friendly_unit.is_in_state(UnitState.OPERATING)
+    assert sunk_enemy.is_in_state(UnitState.SINKING)
 
     # Test that ship stays OPERATING until health reaches 0
-    unit2.take_damage(75)  # This brings health to 15
-    assert unit2.attributes.current_health == 15.0
-    assert unit2.is_in_state(UnitState.OPERATING)  # Ship should still be operating above 0 health
+    enemy_target.take_damage(75)  # This brings health to 15
+    assert enemy_target.attributes.current_health == 15.0
+    assert enemy_target.is_in_state(UnitState.OPERATING)  # Ship should still be operating above 0 health
     
     # Test transition to SINKING state when health reaches 0
-    unit2.take_damage(15)  # This brings health to 0
-    assert unit2.attributes.current_health == 0.0  # Verify health is exactly 0
-    assert unit2.is_in_state(UnitState.SINKING)  # Ship should be sinking when health reaches 0
+    enemy_target.take_damage(15)  # This brings health to 0
+    assert enemy_target.attributes.current_health == 0.0  # Verify health is exactly 0
+    assert enemy_target.is_in_state(UnitState.SINKING)  # Ship should be sinking when health reaches 0

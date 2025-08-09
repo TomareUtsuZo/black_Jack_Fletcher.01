@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from src.backend.models.common import Position
 from src.backend.models.common.geometry.nautical_miles import NauticalMiles
-from typing import Dict, Optional, Protocol, Any
+from typing import Dict, List, Optional, Protocol, Any
 from uuid import UUID, uuid4
 
 from .types.unit_type import UnitType as UnitType  # explicitly re-export
@@ -159,9 +159,14 @@ class Unit(UnitInterface):
         return self._modules.get(name)
     
     @property
-    def is_alive(self) -> bool:
-        """Check if the unit is still alive"""
+    def is_not_sunk(self) -> bool:
+        """Check if the unit is not in a sunk state"""
         return self.state != UnitState.SUNK
+        
+    @property
+    def is_alive(self) -> bool:
+        """Check if the unit is still alive (alias for is_not_sunk for backward compatibility)"""
+        return self.is_not_sunk
         
     def is_in_state(self, state: UnitState) -> bool:
         """Check if the unit is in a specific state"""
@@ -249,19 +254,30 @@ class Unit(UnitInterface):
                                                                        visual_range)  
         
 
-    def perform_attack(self, target: 'Unit') -> None:
+    def perform_attack(self, detected_units: List['Unit']) -> None:
         """
-        Perform an attack on the target unit.
+        Evaluate detected units and perform attacks on legitimate targets.
         
         Args:
-            target: The unit to attack
+            detected_units: List of units that have been detected
         """
-        damage = 10
-        if self.has_weapons():  # Using the existing weapons check
-            target.take_damage(damage)
-            logging.info(f"{self.attributes.name} attacked {target.attributes.name} for {damage} damage")
-        else:
-            logging.warning(f"{self.attributes.name} has no weapons")
+        # Get or create attack module
+        attack_module = self.get_module('attack')
+        if not attack_module:
+            from src.backend.models.units.modules.attack import Attack
+            attack_module = Attack(attacker=self)
+            self.add_module('attack', attack_module)
+        
+        # Get legitimate targets
+        legit_targets = attack_module.delineate_legit_targets(detected_units)
+        
+        if not legit_targets:
+            logging.info(f"{self.attributes.name} found no legitimate targets")
+            return
+            
+        # For now, attack the first legitimate target
+        # This could be enhanced with target selection logic
+        attack_module.execute_attack(legit_targets[0])
     
     def update_crew_status(self, status: str) -> None:  # New method for updating crew status
         """Update the crew status (e.g., 'surviving', 'rescued', 'captured')."""
