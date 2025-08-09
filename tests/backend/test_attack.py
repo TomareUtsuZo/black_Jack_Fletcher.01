@@ -1,8 +1,34 @@
 import pytest
 from src.backend.models.units.unit import Unit, UnitState, UnitType
+from src.backend.models.units.modules.attack import Attack
 from src.backend.models.common.geometry.nautical_miles import NauticalMiles
 from src.backend.models.common.geometry.position import Position
 import uuid
+
+def create_test_unit(name: str, faction: str, position: Position) -> Unit:
+    """Helper function to create test units with standard attributes"""
+    return Unit(
+        unit_id=uuid.uuid4(),
+        name=name,
+        hull_number=f"{name[0]}1",
+        unit_type=UnitType.DESTROYER,
+        task_force_assigned_to=None,
+        ship_class="TestClass",
+        faction=faction,
+        position=position,
+        destination=None,
+        max_speed=NauticalMiles(30),
+        cruise_speed=NauticalMiles(20),
+        current_speed=NauticalMiles(15),
+        max_health=100.0,
+        current_health=100.0,
+        max_fuel=100.0,
+        current_fuel=100.0,
+        crew=50,
+        visual_range=NauticalMiles(20),
+        visual_detection_rate=0.5,
+        tonnage=5000
+    )
 
 def test_protocol_implementation() -> None:
     """Test that Attack properly implements UnitModule protocol"""
@@ -251,3 +277,80 @@ def test_attack() -> None:  # Added return type to fix mypy error
     attack_module.send_damage_to_target(test_target, 75.0)
     assert test_target.attributes.current_health == 0.0, "Lethal damage should reduce health to 0"
     assert test_target.is_in_state(UnitState.SINKING), "Unit should transition to sinking state at 0 health"
+
+def test_empty_detected_units() -> None:
+    """Test behavior when no units are detected"""
+    attacker = create_test_unit("Attacker", "TestFaction", Position(x=0, y=0))
+    
+    # Get attack module
+    attack_module = Attack(attacker=attacker)
+    attacker.add_module('attack', attack_module)
+    
+    # Should handle empty list gracefully
+    attacker.perform_attack([])
+    
+    # No exceptions should be raised and attacker should be unaffected
+    assert attacker.attributes.current_health == 100.0
+    assert attacker.is_in_state(UnitState.OPERATING)
+
+def test_equal_distance_targets() -> None:
+    """Test target selection when multiple enemies are at equal distance"""
+    attacker = create_test_unit("Attacker", "TestFaction", Position(x=0, y=0))
+    enemy1 = create_test_unit("Enemy1", "EnemyFaction", Position(x=1, y=0))
+    enemy2 = create_test_unit("Enemy2", "EnemyFaction", Position(x=0, y=1))
+    
+    # Get attack module
+    attack_module = Attack(attacker=attacker)
+    attacker.add_module('attack', attack_module)
+    
+    # Both enemies are at distance 1, should pick one consistently
+    detected_units = [enemy1, enemy2]
+    attacker.perform_attack(detected_units)
+    
+    # Verify exactly one target was damaged
+    damaged_count = sum(
+        1 for unit in [enemy1, enemy2]
+        if unit.attributes.current_health < 100.0
+    )
+    assert damaged_count == 1, "Exactly one target should be damaged"
+    
+    # Both units should still be operating
+    assert enemy1.is_in_state(UnitState.OPERATING)
+    assert enemy2.is_in_state(UnitState.OPERATING)
+
+def test_attack_module_initialization() -> None:
+    """Test attack module initialization and reinitialization"""
+    unit = create_test_unit("Test", "TestFaction", Position(x=0, y=0))
+    
+    # Test first initialization
+    attack_module = Attack(attacker=unit)
+    unit.add_module('attack', attack_module)
+    assert unit.get_module('attack') is attack_module
+    
+    # Test attempting to add duplicate module
+    with pytest.raises(ValueError, match="Module attack already exists"):
+        unit.add_module('attack', Attack(attacker=unit))
+    
+    # Verify original module is still in place
+    assert unit.get_module('attack') is attack_module
+
+def test_weaponless_attack() -> None:
+    """Test attack behavior when unit has no weapons"""
+    attacker = create_test_unit("Attacker", "TestFaction", Position(x=0, y=0))
+    target = create_test_unit("Target", "EnemyFaction", Position(x=1, y=0))
+    
+    # Get attack module
+    attack_module = Attack(attacker=attacker)
+    attacker.add_module('attack', attack_module)
+    
+    # Mock has_weapons to return False
+    original_has_weapons = attacker.has_weapons
+    attacker.has_weapons = lambda: False  # type: ignore
+    
+    try:
+        attacker.perform_attack([target])
+        assert target.attributes.current_health == 100.0, "Weaponless unit should not deal damage"
+        assert target.is_in_state(UnitState.OPERATING), "Target should remain operating"
+    finally:
+        # Restore original method
+        attacker.has_weapons = original_has_weapons  # type: ignore
