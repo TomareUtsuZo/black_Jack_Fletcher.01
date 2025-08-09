@@ -252,6 +252,7 @@ class Unit(UnitInterface):
             # detected_units would be called if needed
             detected_units = detection_module.perform_visual_detection(detection_rate, 
                                                                        visual_range)  
+            self.perform_attack(detected_units)
         
 
     def perform_attack(self, detected_units: List['Unit']) -> None:
@@ -271,13 +272,15 @@ class Unit(UnitInterface):
         # Get legitimate targets
         legit_targets = attack_module.delineate_legit_targets(detected_units)
         
-        if not legit_targets:
+        # Choose the best target from legitimate options
+        chosen_target = attack_module.choose_target_from_legit_options(legit_targets)
+        
+        if not chosen_target:
             logging.info(f"{self.attributes.name} found no legitimate targets")
             return
             
-        # For now, attack the first legitimate target
-        # This could be enhanced with target selection logic
-        attack_module.execute_attack(legit_targets[0])
+        # Execute attack on the chosen target
+        attack_module.execute_attack(chosen_target)
     
     def update_crew_status(self, status: str) -> None:  # New method for updating crew status
         """Update the crew status (e.g., 'surviving', 'rescued', 'captured')."""

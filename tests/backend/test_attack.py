@@ -115,13 +115,39 @@ def test_attack() -> None:  # Added return type to fix mypy error
     assert sunk_enemy.is_in_state(UnitState.SINKING)
     
     # Test targeting logic - should only attack enemy_target (not friendly or sunk units)
-    detected_units = [enemy_target, friendly_unit, sunk_enemy]
+    # Create a farther enemy unit
+    far_enemy = Unit(
+        unit_id=uuid.uuid4(),
+        name="Far Enemy",
+        hull_number="F1",
+        unit_type=UnitType.DESTROYER,
+        task_force_assigned_to=None,
+        ship_class="TestClass",
+        faction="EnemyFaction",
+        position=Position(x=10, y=10),  # Much farther away
+        destination=None,
+        max_speed=NauticalMiles(30),
+        cruise_speed=NauticalMiles(20),
+        current_speed=NauticalMiles(15),
+        max_health=100.0,
+        current_health=100.0,
+        max_fuel=100.0,
+        current_fuel=100.0,
+        crew=50,
+        visual_range=NauticalMiles(20),
+        visual_detection_rate=0.5,
+        tonnage=5000
+    )
+    
+    # Test with multiple valid targets at different distances
+    detected_units = [far_enemy, enemy_target, friendly_unit, sunk_enemy]
     attacker.perform_attack(detected_units)
     
-    # Verify only enemy_target took damage
-    assert enemy_target.attributes.current_health == 90.0  # Took 10 damage
-    assert friendly_unit.attributes.current_health == 100.0  # No damage
-    assert sunk_enemy.attributes.current_health == 0.0  # No change
+    # Verify closest enemy (enemy_target) took damage, others did not
+    assert enemy_target.attributes.current_health == 90.0  # Took 10 damage (closest at position 1,1)
+    assert far_enemy.attributes.current_health == 100.0  # No damage (farther at position 10,10)
+    assert friendly_unit.attributes.current_health == 100.0  # No damage (friendly)
+    assert sunk_enemy.attributes.current_health == 0.0  # No change (sunk)
     
     # Verify states remained appropriate
     assert enemy_target.is_in_state(UnitState.OPERATING)

@@ -1,5 +1,5 @@
 import logging  # Import for logging errors or events
-from typing import List
+from typing import List, Optional
 from src.backend.models.units.unit import Unit, UnitModule
 
 # Define a basic Attack class for handling combat logic
@@ -38,6 +38,32 @@ class Attack(UnitModule):
             
         logging.info(f"{self.attacker.attributes.name} identified {len(legit_targets)} legitimate targets")
         return legit_targets
+
+    def choose_target_from_legit_options(self, legit_targets: List[Unit]) -> Optional[Unit]:
+        """
+        Choose a target from the list of legitimate targets.
+        Currently selects the closest target based on straight-line distance.
+        
+        Args:
+            legit_targets: List of valid targets to choose from
+            
+        Returns:
+            The chosen target, or None if no valid targets
+        """
+        if not legit_targets:
+            return None
+            
+        # Get attacker's position
+        attacker_pos = self.attacker.attributes.position
+        
+        # Find the closest target
+        closest_target = min(
+            legit_targets,
+            key=lambda target: attacker_pos.distance_to(target.attributes.position)
+        )
+        
+        logging.info(f"{self.attacker.attributes.name} selected {closest_target.attributes.name} as closest target")
+        return closest_target
 
     def execute_attack(self, target: Unit) -> None:
         """
