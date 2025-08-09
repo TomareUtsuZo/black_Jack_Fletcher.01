@@ -103,5 +103,16 @@ class Attack(UnitModule):
         """
         target.take_damage(damage)
         logging.info(f"{self.attacker.attributes.name} dealt {damage} damage to {target.attributes.name}")
-
+        
+    def perform_upkeep(self) -> None:
+        """
+        Perform any necessary upkeep after an attack.
+        This could include:
+        - Resetting cooldowns
+        - Updating ammunition counts
+        - Applying weapon wear and tear
+        - Updating combat statistics
+        """
+        # Currently a placeholder for future implementation
+        logging.debug(f"{self.attacker.attributes.name} performing attack upkeep")
 
