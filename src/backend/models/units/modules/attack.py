@@ -97,9 +97,18 @@ class Attack(UnitModule):
         """
         Apply calculated damage to the target unit.
         
+        TODO: This method will need to be updated when the damage system is fully defined.
+        Future considerations:
+        - Different damage types (kinetic, explosive, etc.)
+        - Armor penetration calculations
+        - Damage mitigation systems
+        - Critical hit locations
+        - Internal system damage
+        - Crew casualties
+        
         Args:
             target: The unit receiving the damage
-            damage: Amount of damage to apply
+            damage: Amount of damage to apply (currently a simple float value)
         """
         target.take_damage(damage)
         logging.info(f"{self.attacker.attributes.name} dealt {damage} damage to {target.attributes.name}")
@@ -110,7 +119,7 @@ class Attack(UnitModule):
         This could include:
         - Resetting cooldowns
         - Updating ammunition counts
-        - Applying weapon wear and tear
+        - Applying weapon wear and tear (equipment failures, and crew exaustion, maybe.)
         - Updating combat statistics
         """
         # Currently a placeholder for future implementation
