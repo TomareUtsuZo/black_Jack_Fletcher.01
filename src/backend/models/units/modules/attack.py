@@ -95,16 +95,18 @@ class Attack(UnitModule):
         
     def send_damage_to_target(self, target: Unit, damage: float) -> None:
         """
-        Apply calculated damage to the target unit.
+        Send calculated damage to the target unit.
+        This method focuses solely on the attacking unit's perspective - what damage it sends out.
+        The actual effects of the damage (internal damage, crew effects, critical hits, etc.) 
+        are handled by the receiving unit's take_damage method.
         
         TODO: This method will need to be updated when the damage system is fully defined.
         Future considerations:
         - Different damage types (kinetic, explosive, etc.)
-        - Armor penetration calculations
-        - Damage mitigation systems
-        - Critical hit locations
-        - Internal system damage
-        - Crew casualties
+        - Weapon characteristics (penetration, blast radius)
+        - Range and accuracy effects
+        - Environmental modifiers (weather, time of day)
+        - Weapon reliability and maintenance state
         
         Args:
             target: The unit receiving the damage
