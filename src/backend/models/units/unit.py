@@ -21,6 +21,22 @@ class UnitModule(Protocol):
     def initialize(self) -> None:
         """Initialize the module"""
         ...
+        
+    def calculate_attack_effectiveness(self, target: 'Unit') -> float:
+        """Calculate the effectiveness of an attack against the target"""
+        ...
+        
+    def delineate_legit_targets(self, detected_units: List['Unit']) -> List['Unit']:
+        """Filter detected units to determine legitimate targets"""
+        ...
+        
+    def choose_target_from_legit_options(self, legit_targets: List['Unit']) -> Optional['Unit']:
+        """Choose a target from the list of legitimate targets"""
+        ...
+        
+    def execute_attack(self, target: 'Unit') -> None:
+        """Execute an attack against a specific target"""
+        ...
 
 @dataclass
 class UnitAttributes:

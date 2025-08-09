@@ -141,9 +141,22 @@ def test_attack() -> None:  # Added return type to fix mypy error
     
     # Test with multiple valid targets at different distances
     detected_units = [far_enemy, enemy_target, friendly_unit, sunk_enemy]
+    
+    # Get attack module to test damage calculation directly
+    attack_module = attacker.get_module('attack')
+    if not attack_module:
+        from src.backend.models.units.modules.attack import Attack
+        attack_module = Attack(attacker=attacker)
+        attacker.add_module('attack', attack_module)
+    
+    # Test damage calculation
+    calculated_damage = attack_module.calculate_attack_effectiveness(enemy_target)
+    assert calculated_damage == 10.0, "Base damage calculation should be 10.0"
+    
+    # Test attack execution with target selection
     attacker.perform_attack(detected_units)
     
-    # Verify closest enemy (enemy_target) took damage, others did not
+    # Verify closest enemy (enemy_target) took calculated damage, others did not
     assert enemy_target.attributes.current_health == 90.0  # Took 10 damage (closest at position 1,1)
     assert far_enemy.attributes.current_health == 100.0  # No damage (farther at position 10,10)
     assert friendly_unit.attributes.current_health == 100.0  # No damage (friendly)

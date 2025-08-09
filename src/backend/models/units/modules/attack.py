@@ -65,6 +65,33 @@ class Attack(UnitModule):
         logging.info(f"{self.attacker.attributes.name} selected {closest_target.attributes.name} as closest target")
         return closest_target
 
+    def calculate_attack_effectiveness(self, target: Unit) -> float:
+        """
+        Calculate the effectiveness of an attack against the target.
+        Currently returns a fixed damage value, but can be expanded to include:
+        - Distance-based effectiveness
+        - Weapon types and capabilities
+        - Target armor/defense
+        - Environmental conditions
+        - Critical hit chances
+        
+        Args:
+            target: The unit being attacked
+            
+        Returns:
+            float: The calculated damage amount
+        """
+        # For now, return fixed damage value
+        # This is a placeholder for more sophisticated calculations
+        base_damage = 10.0
+        
+        logging.debug(
+            f"{self.attacker.attributes.name} calculating attack effectiveness against "
+            f"{target.attributes.name}: {base_damage} damage"
+        )
+        
+        return base_damage
+        
     def execute_attack(self, target: Unit) -> None:
         """
         Execute an attack against a specific target.
@@ -73,7 +100,9 @@ class Attack(UnitModule):
             target: The unit to attack
         """
         if self.attacker.has_weapons():
-            target.take_damage(self.damage)
-            logging.info(f"{self.attacker.attributes.name} attacked {target.attributes.name} for {self.damage} damage")
+            # Calculate and apply damage
+            damage = self.calculate_attack_effectiveness(target)
+            target.take_damage(damage)
+            logging.info(f"{self.attacker.attributes.name} attacked {target.attributes.name} for {damage} damage")
         else:
             logging.warning(f"{self.attacker.attributes.name} has no weapons")
