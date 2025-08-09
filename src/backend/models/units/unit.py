@@ -276,8 +276,15 @@ class Unit(UnitInterface):
             logging.info(f"{self.attributes.name} found no legitimate targets")
             return
             
-        # Execute attack on the chosen target
-        attack_module.execute_attack(chosen_target)
+        # Calculate and apply damage if we have weapons
+        if self.has_weapons():
+            # Calculate damage
+            damage = attack_module.calculate_attack_effectiveness(chosen_target)
+            # Apply the damage
+            attack_module.send_damage_to_target(chosen_target, damage)
+            logging.info(f"{self.attributes.name} attacked {chosen_target.attributes.name}")
+        else:
+            logging.warning(f"{self.attributes.name} has no weapons")
     
     def update_crew_status(self, status: str) -> None:  # New method for updating crew status
         """Update the crew status (e.g., 'surviving', 'rescued', 'captured')."""

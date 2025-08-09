@@ -26,6 +26,4 @@ class UnitModule(Protocol):
         """Apply calculated damage to the target unit"""
         ...
         
-    def execute_attack(self, target: UnitInterface) -> None:
-        """Execute an attack against a specific target"""
-        ...
+

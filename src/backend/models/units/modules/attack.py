@@ -104,18 +104,4 @@ class Attack(UnitModule):
         target.take_damage(damage)
         logging.info(f"{self.attacker.attributes.name} dealt {damage} damage to {target.attributes.name}")
 
-    def execute_attack(self, target: Unit) -> None:
-        """
-        Execute an attack against a specific target.
-        
-        Args:
-            target: The unit to attack
-        """
-        if self.attacker.has_weapons():
-            # Calculate damage
-            damage = self.calculate_attack_effectiveness(target)
-            # Apply the damage
-            self.send_damage_to_target(target, damage)
-            logging.info(f"{self.attacker.attributes.name} attacked {target.attributes.name}")
-        else:
-            logging.warning(f"{self.attacker.attributes.name} has no weapons")
+

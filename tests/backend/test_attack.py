@@ -43,7 +43,7 @@ def test_protocol_implementation() -> None:
     assert hasattr(attack_module, 'delineate_legit_targets')
     assert hasattr(attack_module, 'choose_target_from_legit_options')
     assert hasattr(attack_module, 'send_damage_to_target')
-    assert hasattr(attack_module, 'execute_attack')
+
 
 def test_attack() -> None:  # Added return type to fix mypy error
     # Set up test units
