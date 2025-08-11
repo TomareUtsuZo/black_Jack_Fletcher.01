@@ -222,14 +222,47 @@ class TestGameStateManager:
             manager.set_unit_targeting("test_unit", targeting_params)
         
         # Test damage application (should raise NotImplementedError)
+        # What is this? It does not look like the attack module looks
         damage_info: DamageInfo = {
-            "amount": 50.0,
-            "type": "kinetic",
-            "source_id": "attacker_unit"
+            "amount": 50.0  # Simple damage amount, matching our current system
         }
         with pytest.raises(NotImplementedError):
             manager.apply_damage("test_unit", damage_info)
     
+    def test_unit_state_updates(self, game_time_manager: GameTimeManager) -> None:
+        """Test that unit states are properly updated during tick."""
+        from unittest.mock import Mock, create_autospec
+        from src.backend.models.units.unit_interface import UnitInterface
+        
+        manager = GameStateManager(time_manager=game_time_manager)
+        manager._state = GameState.RUNNING
+        
+        # Create properly spec'd mock units with all required methods
+        unit1 = create_autospec(UnitInterface, instance=True)
+        unit2 = create_autospec(UnitInterface, instance=True)
+        
+        # Add mock units to manager's unit list
+        manager._unit_manager._units = {
+            "unit1": unit1,
+            "unit2": unit2
+        }
+        
+        # Trigger a tick
+        manager.tick()
+        
+        # Verify each unit's perform_tick was called exactly once
+        unit1.perform_tick.assert_called_once()
+        unit2.perform_tick.assert_called_once()
+        
+        # Verify units aren't updated when game is paused
+        manager._state = GameState.PAUSED
+        unit1.reset_mock()
+        unit2.reset_mock()
+        
+        manager.tick()
+        unit1.perform_tick.assert_not_called()
+        unit2.perform_tick.assert_not_called()
+
     def test_time_limit_handling(self, game_time_manager: GameTimeManager) -> None:
         """Test handling of time limit reached error."""
         manager = GameStateManager(time_manager=game_time_manager)

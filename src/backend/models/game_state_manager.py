@@ -52,10 +52,7 @@ class TargetingParameters(TypedDict):
 
 class DamageInfo(TypedDict):
     """Type definition for damage application"""
-    # To be expanded based on requirements
-    amount: float
-    type: str
-    source_id: str
+    amount: float  # Amount of damage to apply
 
 @dataclass
 class GameStateMachine:
@@ -207,8 +204,9 @@ class UnitManager:
     
     def add_unit(self, unit: UnitInterface, initial_state: UnitInitialState) -> str:
         """Add a new unit."""
-        # TODO: Implement unit creation
-        raise NotImplementedError
+        unit_id = str(unit.get_unit_state()['unit_id'])
+        self._units[unit_id] = unit
+        return unit_id
     
     def remove_unit(self, unit_id: str) -> None:
         """Remove a unit."""
@@ -224,9 +222,16 @@ class UnitManager:
         return list(self._units.values())
     
     def update_unit_states(self) -> None:
-        """Update all unit states."""
-        # TODO: Implement unit state updates
-        pass
+        """
+        Update all unit states by performing their tick operations.
+        This includes:
+        - Movement updates
+        - Detection checks
+        - Combat resolution
+        - State transitions
+        """
+        for unit in self._units.values():
+            unit.perform_tick()
 
 @dataclass
 class GameStateManager:
