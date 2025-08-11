@@ -1,6 +1,6 @@
 import logging  # Import for logging errors or events
 from typing import List, Optional
-from src.backend.models.units.unit import Unit
+from src.backend.models.units.unit import Unit, UnitState
 from src.backend.models.units.protocols.unit_module_protocol import UnitModule
 
 # Define a basic Attack class for handling combat logic
@@ -93,12 +93,61 @@ class Attack(UnitModule):
         
         return base_damage
         
+    def determine_damage_effectiveness(self, target: Unit, base_damage: float) -> float:
+        """
+        Determine the final damage effectiveness against the target.
+        This will eventually consider factors like:
+        - Armor effectiveness
+        - Range penalties
+        - Weather effects
+        - Time of day modifiers
+        
+        Args:
+            target: The unit being attacked
+            base_damage: The initial damage amount to be modified
+            
+        Returns:
+            float: The final calculated damage amount before critical hits
+        """
+        # For now, just return the base damage
+        # This is a placeholder for more sophisticated calculations
+        return base_damage
+        
+    def check_for_critical_result(self, target: Unit, base_damage: float) -> None:
+        """
+        Check if the attack results in a critical hit and apply additional effects.
+        This will eventually consider factors like:
+        - Critical hit chances based on weapon type
+        - Target vulnerabilities
+        - Special ammunition effects
+        - Crew skill levels
+        - Equipment status
+        
+        Args:
+            target: The unit being attacked
+            base_damage: The initial damage amount that may trigger critical effects
+        """
+        # For now, just pass
+        # This is a placeholder for future critical hit system
+        pass
+
+    def apply_damage_to_current_health(self, target: Unit, damage: float) -> None:
+        """
+        Apply the calculated damage to the target's current health.
+        This handles the basic health reduction.
+        
+        Args:
+            target: The unit receiving the damage
+            damage: Amount of damage to apply
+        """
+        target.attributes.current_health = max(0.0, target.attributes.current_health - damage)
+
     def send_damage_to_target(self, target: Unit, damage: float) -> None:
         """
         Send calculated damage to the target unit.
         This method focuses solely on the attacking unit's perspective - what damage it sends out.
         The actual effects of the damage (internal damage, crew effects, critical hits, etc.) 
-        are handled by the receiving unit's take_damage method.
+        are handled by determining effectiveness and applying it to the target.
         
         TODO: This method will need to be updated when the damage system is fully defined.
         Future considerations:
@@ -111,9 +160,8 @@ class Attack(UnitModule):
         Args:
             target: The unit receiving the damage
             damage: Amount of damage to apply (currently a simple float value)
-        """
-        target.take_damage(damage)
-        logging.info(f"{self.attacker.attributes.name} dealt {damage} damage to {target.attributes.name}")
+        """ 
+        target.take_damage(damage)  # Use take_damage to ensure proper state transitions
         
     def perform_upkeep(self) -> None:
         """

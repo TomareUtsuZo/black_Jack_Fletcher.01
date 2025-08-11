@@ -10,8 +10,12 @@ class UnitModule(Protocol):
         """Initialize the module"""
         ...
         
-    def calculate_attack_effectiveness(self, target: UnitInterface) -> float:
-        """Calculate the effectiveness of an attack against the target"""
+    def determine_damage_effectiveness(self, target: UnitInterface, base_damage: float) -> float:
+        """Determine the final damage effectiveness against the target"""
+        ...
+        
+    def check_for_critical_result(self, target: UnitInterface, base_damage: float) -> None:
+        """Check if the attack results in a critical hit and apply additional effects"""
         ...
         
     def delineate_legit_targets(self, detected_units: List[UnitInterface]) -> List[UnitInterface]:

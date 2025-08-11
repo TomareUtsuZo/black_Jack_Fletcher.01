@@ -71,6 +71,38 @@ def test_protocol_implementation() -> None:
     assert hasattr(attack_module, 'send_damage_to_target')
 
 
+def test_damage_effectiveness() -> None:
+    """Test the damage effectiveness calculation system"""
+    # Create test units
+    attacker = create_test_unit("Attacker", "TestFaction", Position(x=0, y=0))
+    target = create_test_unit("Target", "EnemyFaction", Position(x=1, y=0))
+    
+    # Get attack module
+    attack_module = Attack(attacker=attacker)
+    attacker.add_module('attack', attack_module)
+    
+    # Test base damage calculation
+    base_damage = attack_module.determine_damage_effectiveness(target, 10.0)
+    assert base_damage == 10.0, "Base damage should be unchanged in current implementation"
+    
+    # Verify target health is not affected by just calculating effectiveness
+    assert target.attributes.current_health == 100.0, "Damage calculation should not affect health"
+
+def test_critical_result() -> None:
+    """Test the critical hit system"""
+    # Create test units
+    attacker = create_test_unit("Attacker", "TestFaction", Position(x=0, y=0))
+    target = create_test_unit("Target", "EnemyFaction", Position(x=1, y=0))
+    
+    # Get attack module
+    attack_module = Attack(attacker=attacker)
+    attacker.add_module('attack', attack_module)
+    
+    # Test critical hit check (currently just a placeholder)
+    initial_health = target.attributes.current_health
+    attack_module.check_for_critical_result(target, 10.0)
+    assert target.attributes.current_health == initial_health, "Critical check should not affect health in current implementation"
+
 def test_attack() -> None:  # Added return type to fix mypy error
     # Set up test units
     unit1_position = Position(x=0, y=0)
@@ -217,8 +249,15 @@ def test_attack() -> None:  # Added return type to fix mypy error
         attacker.add_module('attack', attack_module)
     
     # Test damage calculation
-    calculated_damage = attack_module.calculate_attack_effectiveness(enemy_target)
-    assert calculated_damage == 10.0, "Base damage calculation should be 10.0"
+    base_damage = attack_module.determine_damage_effectiveness(enemy_target, 10.0)
+    assert base_damage == 10.0, "Base damage calculation should be 10.0"
+    
+    # Verify health isn't affected by damage calculation
+    assert enemy_target.attributes.current_health == 100.0, "Damage calculation should not affect health"
+    
+    # Test critical check doesn't affect health
+    attack_module.check_for_critical_result(enemy_target, base_damage)
+    assert enemy_target.attributes.current_health == 100.0, "Critical check should not affect health"
     
     # Test attack execution with target selection
     attacker.perform_attack(detected_units)
@@ -334,6 +373,30 @@ def test_attack_module_initialization() -> None:
     # Verify original module is still in place
     assert unit.get_module('attack') is attack_module
 
+def test_damage_application() -> None:
+    """Test that damage is properly applied through different methods"""
+    # Create test units
+    attacker = create_test_unit("Attacker", "TestFaction", Position(x=0, y=0))
+    target = create_test_unit("Target", "EnemyFaction", Position(x=1, y=0))
+    
+    # Get attack module
+    attack_module = Attack(attacker=attacker)
+    attacker.add_module('attack', attack_module)
+    
+    # Test damage through send_damage_to_target
+    initial_health = target.attributes.current_health
+    test_damage = 25.0
+    
+    # Apply damage through send_damage_to_target
+    attack_module.send_damage_to_target(target, test_damage)
+    assert target.attributes.current_health == initial_health - test_damage, "Damage was not applied correctly through send_damage_to_target"
+    assert target.is_in_state(UnitState.OPERATING), "Unit should still be operating"
+    
+    # Apply lethal damage through take_damage
+    target.take_damage(target.attributes.current_health)  # Apply remaining health as damage
+    assert target.attributes.current_health == 0.0, "Health should be zero after lethal damage"
+    assert target.is_in_state(UnitState.SINKING), "Unit should transition to sinking state"
+
 def test_weaponless_attack() -> None:
     """Test attack behavior when unit has no weapons"""
     attacker = create_test_unit("Attacker", "TestFaction", Position(x=0, y=0))
@@ -348,6 +411,15 @@ def test_weaponless_attack() -> None:
     attacker.has_weapons = lambda: False  # type: ignore
     
     try:
+        # Verify damage calculation still works even without weapons
+        base_damage = attack_module.determine_damage_effectiveness(target, 10.0)
+        assert base_damage == 10.0, "Damage calculation should work without weapons"
+        
+        # Verify critical check doesn't affect anything
+        attack_module.check_for_critical_result(target, base_damage)
+        assert target.attributes.current_health == 100.0, "Critical check should not affect health"
+        
+        # Test full attack sequence
         attacker.perform_attack([target])
         assert target.attributes.current_health == 100.0, "Weaponless unit should not deal damage"
         assert target.is_in_state(UnitState.OPERATING), "Target should remain operating"

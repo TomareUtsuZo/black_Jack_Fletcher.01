@@ -176,15 +176,27 @@ class Unit(UnitInterface):
     
     def take_damage(self, amount: float) -> None:
         """
-        Apply damage to the unit
+        Apply damage to the unit. This is a legacy method that will be deprecated.
+        New code should use the Attack module's damage system instead.
         
         Args:
             amount: Amount of damage to apply
         """
-        self.attributes.current_health = max(0.0, self.attributes.current_health - amount)
-        if self.attributes.current_health <= 0:
+        # Get or create attack module
+        attack_module = self.get_module('attack')
+        if not attack_module:
+            from src.backend.models.units.modules.attack import Attack
+            attack_module = Attack(attacker=self)
+            self.add_module('attack', attack_module)
+        
+        # Use the new damage system
+        base_damage = attack_module.determine_damage_effectiveness(self, amount)
+        attack_module.apply_damage_to_current_health(self, base_damage)
+        attack_module.check_for_critical_result(self, base_damage)
+        
+        # Check for state changes after all damage is applied
+        if self.attributes.current_health <= 0 and self.state != UnitState.SINKING:
             self.state = UnitState.SINKING
-            # Crew status can be updated separately, e.g., via a new method
             logging.info(f"{self.attributes.name} has been sunk, crew status: {self.crew_status}")
     
     def consume_fuel(self, amount: float) -> bool:
