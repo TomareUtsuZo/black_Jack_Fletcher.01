@@ -259,8 +259,7 @@ class Unit(UnitInterface):
             detection_rate = self.attributes.visual_detection_rate
             visual_range = self.attributes.visual_range
             # detected_units would be called if needed
-            detected_units = detection_module.perform_visual_detection(detection_rate, 
-                                                                       visual_range)  
+            detected_units = detection_module.perform_visual_detection(detection_rate, visual_range)  
             self.perform_attack(detected_units)
         
 
