@@ -17,7 +17,7 @@ geometric calculations module to maintain single responsibility principle.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Tuple
+from typing import Tuple, Dict, Mapping
 
 @dataclass(frozen=True)
 class Position:
@@ -37,6 +37,14 @@ class Position:
     def to_tuple(self) -> Tuple[float, float]:
         """Convert position to a tuple representation."""
         return (self.x, self.y)
+    
+    def to_dict(self) -> Dict[str, float]:
+        """Convert position to a JSON-friendly dictionary with explicit keys.
+
+        Returns:
+            Dict[str, float]: {"x": <float>, "y": <float>}
+        """
+        return {"x": float(self.x), "y": float(self.y)}
     
     def distance_to(self, other: 'Position') -> float:
         """
@@ -65,6 +73,18 @@ class Position:
             Position: A new Position instance
         """
         return cls(x=coords[0], y=coords[1])
+
+    @classmethod
+    def from_dict(cls, data: Mapping[str, float]) -> 'Position':
+        """Create a Position from a dict-like mapping with 'x' and 'y' keys.
+
+        Args:
+            data: Mapping containing numeric 'x' and 'y'. Extra keys ignored.
+
+        Returns:
+            Position: A new Position instance.
+        """
+        return cls(x=float(data["x"]), y=float(data["y"]))
 
     def __str__(self) -> str:
         """Return string representation of position."""

@@ -32,10 +32,33 @@ class GameState(Enum):
             return NotImplemented
         return self.value == other.value
 
+class PositionDict(TypedDict):
+    """JSON-friendly position shape used at API/test boundaries.
+
+    Fields:
+    - x: float — X coordinate in world/game units
+    - y: float — Y coordinate in world/game units
+
+    Note:
+    - This is a DTO shape. Internal systems should convert this to
+      `src.backend.models.common.geometry.position.Position`.
+    """
+    x: float
+    y: float
+
+
 class UnitInitialState(TypedDict):
-    """Type definition for unit initialization parameters"""
-    # To be expanded based on requirements
-    position: Dict[str, float]  # x, y coordinates
+    """Startup parameters for creating/registering a unit (DTO layer).
+
+    Fields:
+    - position: PositionDict — world coordinates as floats (x, y)
+    - orientation: float — initial heading in degrees [0, 360)
+
+    Intent:
+    - Keep this JSON-serializable for external inputs/tests.
+    - Convert to domain objects (e.g., `Position`) inside unit creation.
+    """
+    position: PositionDict
     orientation: float
 
 class MovementOrders(TypedDict):
