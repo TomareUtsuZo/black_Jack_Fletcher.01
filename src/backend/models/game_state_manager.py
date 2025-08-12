@@ -50,9 +50,7 @@ class TargetingParameters(TypedDict):
     target_id: str
     priority: int
 
-class DamageInfo(TypedDict):
-    """Type definition for damage application"""
-    amount: float  # Amount of damage to apply
+ 
 
 @dataclass
 class GameStateMachine:
@@ -348,8 +346,12 @@ class GameStateManager:
     
     # Delegate unit operations to UnitManager
     def add_unit(self, unit_type: UnitType, initial_state: UnitInitialState) -> str:
-        """Add a new unit."""
-        return self._unit_manager.add_unit(unit_type, initial_state)
+        """Add a new unit.
+
+        Currently not implemented at the GSM layer. Unit creation and wiring
+        will be handled via a unit factory and registered into the UnitManager.
+        """
+        raise NotImplementedError
     
     def remove_unit(self, unit_id: str) -> None:
         """Remove a unit."""
@@ -429,13 +431,4 @@ class GameStateManager:
         # TODO: Implement targeting logic
         raise NotImplementedError
     
-    def apply_damage(self, unit_id: str, damage_info: DamageInfo) -> None:
-        """
-        Apply damage to a unit.
-        
-        Args:
-            unit_id: ID of the unit to damage
-            damage_info: Damage type and amount information
-        """
-        # TODO: Implement damage application logic
-        raise NotImplementedError 
+    
