@@ -6,30 +6,6 @@ GameStateManager. The manager coordinates between different subsystems:
 - Time management (GameTimeController)
 - Unit management (UnitManager)
 - State management (GameStateMachine)
-
-Design notes: DTOs at the boundary
-- This module accepts JSON-friendly data transfer objects (DTOs) for inputs
-  that naturally originate outside the domain layer (e.g., API payloads,
-  WebSocket messages, test fixtures). See `src.backend.models.game.dto`:
-  - PositionDict: {"x": float, "y": float}
-  - UnitInitialState: initial unit setup data
-  - MovementOrders: waypoints + speed
-  - TargetingParameters: target identifier + priority
-
-- Purpose: Keep GSM orchestration-only. GSM owns sequencing (time, unit
-  ticks, state transitions), not the mechanics of movement/attack. DTOs
-  allow GSM's public API to be simple, JSON-serializable, and stable across
-  layers.
-
-- Conversion: Convert DTOs to domain objects at the appropriate layer:
-  - API/controllers: parse request JSON → DTO → domain types when calling
-    deeper subsystems.
-  - Movement/Attack subsystems: consume domain types (e.g., Position,
-    NauticalMiles) — do not depend on DTOs.
-
-- Outputs: When emitting data to clients, serialize domain objects at the
-  API/serialization layer (e.g., Position.to_dict()). GSM itself does not
-  perform serialization.
 """
 
 from typing import Dict, Optional, List, Any, ClassVar, Final, Literal, Callable
@@ -57,7 +33,31 @@ class GameState(Enum):
         return self.value == other.value
 
 from .game.dto import PositionDict, UnitInitialState, MovementOrders, TargetingParameters
+"""
+Design notes: DTOs at the boundary
+- This module accepts JSON-friendly data transfer objects (DTOs) for inputs
+  that naturally originate outside the domain layer (e.g., API payloads,
+  WebSocket messages, test fixtures). See `src.backend.models.game.dto`:
+  - PositionDict: {"x": float, "y": float}
+  - UnitInitialState: initial unit setup data
+  - MovementOrders: waypoints + speed
+  - TargetingParameters: target identifier + priority
 
+- Purpose: Keep GSM orchestration-only. GSM owns sequencing (time, unit
+  ticks, state transitions), not the mechanics of movement/attack. DTOs
+  allow GSM's public API to be simple, JSON-serializable, and stable across
+  layers.
+
+- Conversion: Convert DTOs to domain objects at the appropriate layer:
+  - API/controllers: parse request JSON → DTO → domain types when calling
+    deeper subsystems.
+  - Movement/Attack subsystems: consume domain types (e.g., Position,
+    NauticalMiles) — do not depend on DTOs.
+
+- Outputs: When emitting data to clients, serialize domain objects at the
+  API/serialization layer (e.g., Position.to_dict()). GSM itself does not
+  perform serialization.
+  """
  
 
 @dataclass
@@ -86,11 +86,16 @@ class GameStateMachine:
         """Check if the game is paused."""
         return self._state == GameState.PAUSED
     
-    def transition_to_running(self) -> None:
-        """Transition to RUNNING state."""
+    def start_game(self) -> None:
+        """Start the game; allowed only from INITIALIZING → RUNNING.
+
+        Raises:
+            RuntimeError: if called when not in INITIALIZING state
+        """
         if self._state != GameState.INITIALIZING:
             raise RuntimeError(self.ERROR_START_FROM_INIT)
         self._state = GameState.RUNNING
+
     
     def pause(self) -> None:
         """Transition to PAUSED state."""
@@ -310,7 +315,7 @@ class GameStateManager:
     
     def start(self) -> None:
         """Start the game."""
-        self._state_machine.transition_to_running()
+        self._state_machine.start_game()
         self._time_controller.start_scheduler(self.tick)
     
     def stop(self) -> None:
