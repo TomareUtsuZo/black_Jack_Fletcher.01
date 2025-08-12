@@ -19,18 +19,13 @@ from src.backend.models.units.unit_interface import UnitInterface
 from src.backend.models.common.time.time_interface import TimeInterface
 import logging
 
-class GameState(Enum):
-    """Game state enumeration"""
-    INITIALIZING = auto()
-    RUNNING = auto()
-    PAUSED = auto()
-    COMPLETED = auto()
+from .game.state_machine import GameState, GameStateMachine
 
-    def __eq__(self, other: object) -> bool:
-        """Compare game states."""
-        if not isinstance(other, GameState):
-            return NotImplemented
-        return self.value == other.value
+# Re-export for compatibility with tests and external imports
+__all__ = [
+    "GameStateManager",
+    "GameState",
+]
 
 from .game.dto import PositionDict, UnitInitialState, MovementOrders, TargetingParameters
 """
@@ -60,62 +55,7 @@ Design notes: DTOs at the boundary
   """
  
 
-@dataclass
-class GameStateMachine:
-    """
-    Manages game state transitions and validation.
-    
-    This class ensures that:
-    - State transitions are valid
-    - State changes are properly logged
-    - State-dependent operations are validated
-    """
-    _state: GameState = field(default_factory=lambda: GameState.INITIALIZING)
-    
-    # State transition error messages
-    ERROR_START_FROM_INIT: Final[str] = "Game can only be started from INITIALIZING state"
-    ERROR_NOT_PAUSED: Final[str] = "Game is not paused"
-    
-    @property
-    def current_state(self) -> GameState:
-        """Get the current game state."""
-        return self._state
-    
-    @property
-    def is_paused(self) -> bool:
-        """Check if the game is paused."""
-        return self._state == GameState.PAUSED
-    
-    def start_game(self) -> None:
-        """Start the game; allowed only from INITIALIZING → RUNNING.
-
-        Raises:
-            RuntimeError: if called when not in INITIALIZING state
-        """
-        if self._state != GameState.INITIALIZING:
-            raise RuntimeError(self.ERROR_START_FROM_INIT)
-        self._state = GameState.RUNNING
-
-    
-    def pause(self) -> None:
-        """Transition to PAUSED state."""
-        if self._state == GameState.RUNNING:
-            self._state = GameState.PAUSED
-    
-    def unpause(self) -> None:
-        """Transition from PAUSED to RUNNING state."""
-        if self._state != GameState.PAUSED:
-            raise RuntimeError(self.ERROR_NOT_PAUSED)
-        self._state = GameState.RUNNING
-    
-    def complete(self) -> None:
-        """Transition to COMPLETED state."""
-        if self._state != GameState.COMPLETED:
-            self._state = GameState.COMPLETED
-    
-    def can_process_tick(self) -> bool:
-        """Check if tick processing is allowed."""
-        return self._state == GameState.RUNNING
+ 
 
 @dataclass
 class GameTimeController:
@@ -135,16 +75,25 @@ class GameTimeController:
     # The GameTimeManager can be injected for testing or advanced usage
     _init_time_manager: Optional[GameTimeManager]
     
-    # Time rate constants
+    # Time rate constants (game-time advanced per tick)
+    # - DEFAULT_TIME_RATE: Sensible gameplay default where each tick advances 1 in‑game minute
+    # - MIN_TIME_RATE: Lower bound for very fine‑grained simulations (1 second per tick)
+    # - MAX_TIME_RATE: Upper bound for time compression (1 hour per tick)
     DEFAULT_TIME_RATE: Final[GameDuration] = GameDuration.from_minutes(1)
     MIN_TIME_RATE: Final[GameDuration] = GameDuration.from_seconds(1)
     MAX_TIME_RATE: Final[GameDuration] = GameDuration.from_hours(1)
     
-    # Scheduler configuration
+    # Scheduler configuration (real-time pacing of ticks)
+    # - DEFAULT_TICK_DELAY: Real seconds between scheduler callbacks
+    #   Example: 1.0 ⇒ call tick() once per real second; the amount of time advanced
+    #   in game is controlled separately by _time_rate.
     DEFAULT_TICK_DELAY: Final[float] = 1.0
     
     # Fields with defaults must come after fields without defaults
-    _time_manager: GameTimeManager = field(init=False)  # Will be set in __post_init__
+    # - _time_manager: Source of truth for current game time; injected or created in __post_init__
+    # - _time_rate: How much game time to advance on each tick (bounded by MIN/MAX)
+    # - _scheduler: Calls the tick handler on a wall‑clock cadence (DEFAULT_TICK_DELAY)
+    _time_manager: GameTimeManager = field(init=False)
     _time_rate: GameDuration = field(default_factory=lambda: GameTimeController.DEFAULT_TIME_RATE)
     _scheduler: GameScheduler = field(default_factory=lambda: GameScheduler(tick_delay=GameTimeController.DEFAULT_TICK_DELAY))
     
@@ -319,9 +268,11 @@ class GameStateManager:
         self._time_controller.start_scheduler(self.tick)
     
     def stop(self) -> None:
-        """Stop the game."""
-        if self._state_machine.current_state == GameState.COMPLETED:
-            return
+        """Stop the game (idempotent).
+
+        Always stops the scheduler and asks the state machine to complete.
+        The state machine handles redundant transitions internally.
+        """
         self._time_controller.stop_scheduler()
         self._state_machine.complete()
     
