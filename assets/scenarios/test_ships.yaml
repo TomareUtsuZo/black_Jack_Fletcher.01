@@ -1,0 +1,100 @@
+# Scenario: test_ships
+#
+# Purpose: Minimal, human-editable scenario that mirrors the ships defined
+# in `src/backend/models/units/test_ships.py`. This exists to exercise the
+# build and data plumbing without needing Python definitions at load time.
+#
+# Notes:
+# - UUIDs are intentionally omitted; a loader can generate them if not present
+# - Speeds are in knots (nautical miles per hour)
+# - Positions are world units (x: longitude-ish, y: latitude-ish for Midway)
+
+name: test_ships
+description: Scenario derived from test_ships.py for build validation
+
+time:
+  # Optional start time parameters could live here (UTC or game-relative)
+  # start: 2024-06-01T12:00:00Z
+
+units:
+  - name: "USS Fletcher"
+    hull_number: "DD-445"
+    unit_type: "DESTROYER"
+    task_force_assigned_to: null
+    ship_class: "Fletcher"
+    faction: "USN"
+    position: { x: -177.25, y: 28.25 }   # MIDWAY_X + 0.1, MIDWAY_Y + 0.05
+    destination: null
+    max_speed: 36.5
+    cruise_speed: 15.0
+    current_speed: 0.0
+    max_health: 100.0
+    current_health: 100.0
+    max_fuel: 5500.0
+    current_fuel: 5500.0
+    crew: 273
+    tonnage: 2100
+    visual_range: 5.0
+    visual_detection_rate: 0.8
+
+  - name: "USS Talen"
+    hull_number: "DD-666"
+    unit_type: "DESTROYER"
+    task_force_assigned_to: null
+    ship_class: "Fletcher"
+    faction: "USN"
+    position: { x: -177.43, y: 28.27 }   # MIDWAY_X - 0.08, MIDWAY_Y + 0.07
+    destination: null
+    max_speed: 36.5
+    cruise_speed: 15.0
+    current_speed: 0.0
+    max_health: 100.0
+    current_health: 100.0
+    max_fuel: 5500.0
+    current_fuel: 5500.0
+    crew: 273
+    tonnage: 2100
+    visual_range: 5.0
+    visual_detection_rate: 0.8
+
+  - name: "IJN Yukikaze"
+    hull_number: "DD-516"
+    unit_type: "DESTROYER"
+    task_force_assigned_to: null
+    ship_class: "Kagero"
+    faction: "IJN"
+    position: { x: -177.47, y: 28.14 }   # MIDWAY_X - 0.12, MIDWAY_Y - 0.06
+    destination: null
+    max_speed: 35.5
+    cruise_speed: 18.0
+    current_speed: 0.0
+    max_health: 100.0
+    current_health: 100.0
+    max_fuel: 5000.0
+    current_fuel: 5000.0
+    crew: 240
+    tonnage: 2033
+    visual_range: 6.0
+    visual_detection_rate: 0.7
+
+  - name: "Queen Anne's Revenge II"
+    hull_number: "PRV-001"
+    unit_type: "DESTROYER"    # Using destroyer for mechanics parity
+    task_force_assigned_to: null
+    ship_class: "Privateer"
+    faction: "UNALIGNED"
+    position: { x: -177.29, y: 28.12 }   # MIDWAY_X + 0.06, MIDWAY_Y - 0.08
+    destination: null
+    max_speed: 28.0
+    cruise_speed: 12.0
+    current_speed: 0.0
+    max_health: 80.0
+    current_health: 80.0
+    max_fuel: 3000.0
+    current_fuel: 3000.0
+    crew: 150
+    tonnage: 1500
+    visual_range: 4.0
+    visual_detection_rate: 0.6
+
+
