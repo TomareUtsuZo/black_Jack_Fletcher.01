@@ -11,15 +11,15 @@ GameStateManager. The manager coordinates between different subsystems:
 from typing import Dict, Optional, List, Any, ClassVar, Final, Literal, Callable
 from enum import Enum, auto
 from dataclasses import dataclass, field
-from .common.time import GameTime, GameDuration, GameTimeManager
-from .common.time.game_scheduler import GameScheduler
-from .units.unit import Unit
-from .units.types.unit_type import UnitType
-from src.backend.models.units.unit_interface import UnitInterface
-from src.backend.models.common.time.time_interface import TimeInterface
+from .common.time import GameTime, GameDuration, GameTimeManager  # Core time value objects
+from .common.time.game_scheduler import GameScheduler  # Real-time tick scheduler (used by controller)
+from .units.unit import Unit  # Domain unit class (ships, etc.)
+from .units.types.unit_type import UnitType  # Enum/type for unit categories
+from src.backend.models.units.unit_interface import UnitInterface  # Protocol for units consumed by managers
+from src.backend.models.common.time.time_interface import TimeInterface  # Protocol for time-like objects
 import logging
 
-from .game.state_machine import GameState, GameStateMachine
+from .game.state_machine import GameState, GameStateMachine  # State rules and transitions
 
 # Re-export for compatibility with tests and external imports
 __all__ = [
@@ -27,7 +27,12 @@ __all__ = [
     "GameState",
 ]
 
-from .game.dto import PositionDict, UnitInitialState, MovementOrders, TargetingParameters
+from .game.dto import (
+    PositionDict,  # JSON-friendly coordinate DTO
+    UnitInitialState,  # DTO for initial unit setup
+    MovementOrders,  # DTO for movement commands
+    TargetingParameters,  # DTO for targeting intent
+)
 """
 Design notes: DTOs at the boundary
 - This module accepts JSON-friendly data transfer objects (DTOs) for inputs
@@ -55,143 +60,9 @@ Design notes: DTOs at the boundary
   """
  
 
- 
+from .game.time_controller import GameTimeController  # Time rate and scheduler orchestration
 
-@dataclass
-class GameTimeController:
-    """
-    Controls game time progression and scheduling.
-    
-    This class manages:
-    - Time rate configuration
-    - Time advancement
-    - Tick scheduling
-    
-    Design Pattern:
-    - Acts as a higher-level controller over GameTimeManager
-    - Separates time rate control from basic time tracking
-    - Allows for dependency injection of time management
-    """
-    # The GameTimeManager can be injected for testing or advanced usage
-    _init_time_manager: Optional[GameTimeManager]
-    
-    # Time rate constants (game-time advanced per tick)
-    # - DEFAULT_TIME_RATE: Sensible gameplay default where each tick advances 1 in‑game minute
-    # - MIN_TIME_RATE: Lower bound for very fine‑grained simulations (1 second per tick)
-    # - MAX_TIME_RATE: Upper bound for time compression (1 hour per tick)
-    DEFAULT_TIME_RATE: Final[GameDuration] = GameDuration.from_minutes(1)
-    MIN_TIME_RATE: Final[GameDuration] = GameDuration.from_seconds(1)
-    MAX_TIME_RATE: Final[GameDuration] = GameDuration.from_hours(1)
-    
-    # Scheduler configuration (real-time pacing of ticks)
-    # - DEFAULT_TICK_DELAY: Real seconds between scheduler callbacks
-    #   Example: 1.0 ⇒ call tick() once per real second; the amount of time advanced
-    #   in game is controlled separately by _time_rate.
-    DEFAULT_TICK_DELAY: Final[float] = 1.0
-    
-    # Fields with defaults must come after fields without defaults
-    # - _time_manager: Source of truth for current game time; injected or created in __post_init__
-    # - _time_rate: How much game time to advance on each tick (bounded by MIN/MAX)
-    # - _scheduler: Calls the tick handler on a wall‑clock cadence (DEFAULT_TICK_DELAY)
-    _time_manager: GameTimeManager = field(init=False)
-    _time_rate: GameDuration = field(default_factory=lambda: GameTimeController.DEFAULT_TIME_RATE)
-    _scheduler: GameScheduler = field(default_factory=lambda: GameScheduler(tick_delay=GameTimeController.DEFAULT_TICK_DELAY))
-    
-    def __post_init__(self) -> None:
-        """
-        Initialize after dataclass fields are set.
-        
-        This ensures all fields are properly initialized before we use them.
-        The _init_time_manager is either used or replaced with a new instance,
-        allowing for both simple usage and testing scenarios.
-        """
-        # Initialize _time_manager with the stored value or create a new one
-        self._time_manager = self._init_time_manager if self._init_time_manager is not None else GameTimeManager()
-        
-        # Clean up the temporary storage
-        del self._init_time_manager
-    
-    @property
-    def current_time(self) -> GameTime:
-        """Get the current game time."""
-        return self._time_manager.time_now
-    
-    @property
-    def time_rate(self) -> GameDuration:
-        """Get the current time rate."""
-        return self._time_rate
-    
-    def set_time_rate(self, new_rate: GameDuration) -> None:
-        """Set a new time progression rate."""
-        if new_rate < self.MIN_TIME_RATE or new_rate > self.MAX_TIME_RATE:
-            raise ValueError(
-                f"Time rate must be between {self.MIN_TIME_RATE.seconds} seconds and "
-                f"{self.MAX_TIME_RATE.seconds} seconds per tick"
-            )
-        self._time_rate = new_rate
-    
-    def set_time_rate_seconds(self, seconds_per_tick: float) -> None:
-        """Set time rate in seconds per tick."""
-        self.set_time_rate(GameDuration.from_seconds(seconds_per_tick))
-    
-    def set_time_rate_minutes(self, minutes_per_tick: float) -> None:
-        """Set time rate in minutes per tick."""
-        self.set_time_rate(GameDuration.from_minutes(minutes_per_tick))
-    
-    def advance_time(self) -> GameTime:
-        """Advance game time by one tick."""
-        return self._time_manager.advance_time(self._time_rate)
-    
-    def start_scheduler(self, tick_handler: Any) -> None:
-        """Start the game scheduler."""
-        self._scheduler.start(tick_handler)
-    
-    def stop_scheduler(self) -> None:
-        """Stop the game scheduler."""
-        self._scheduler.stop()
-
-@dataclass
-class UnitManager:
-    """
-    Manages game units and their states.
-    
-    This class handles:
-    - Unit creation and removal
-    - Unit state updates
-    - Unit queries and lookups
-    """
-    _units: Dict[str, UnitInterface] = field(default_factory=dict)
-    
-    def add_unit(self, unit: UnitInterface, initial_state: UnitInitialState) -> str:
-        """Add a new unit."""
-        unit_id = str(unit.get_unit_state()['unit_id'])
-        self._units[unit_id] = unit
-        return unit_id
-    
-    def remove_unit(self, unit_id: str) -> None:
-        """Remove a unit."""
-        # TODO: Implement unit removal
-        raise NotImplementedError
-    
-    def get_unit(self, unit_id: str) -> Optional[UnitInterface]:
-        """Get a unit by ID."""
-        return self._units.get(unit_id)
-    
-    def get_all_units(self) -> List[UnitInterface]:
-        """Get all units."""
-        return list(self._units.values())
-    
-    def update_unit_states(self) -> None:
-        """
-        Update all unit states by performing their tick operations.
-        This includes:
-        - Movement updates
-        - Detection checks
-        - Combat resolution
-        - State transitions
-        """
-        for unit in self._units.values():
-            unit.perform_tick()
+from .game.unit_manager import UnitManager  # Registry and per-tick iteration of units
 
 @dataclass
 class GameStateManager:
