@@ -33,7 +33,7 @@
    - Units are created but modules (movement, detection, attack) aren't automatically loaded
    - No standardized module initialization process
 
-3. **Game State Persistence**
+3. **Game State Persistence** - low priority for now
    - No mechanism to save/load game state
    - Units need to be recreated on each game start
 

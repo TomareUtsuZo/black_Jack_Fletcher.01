@@ -32,10 +32,33 @@ class GameState(Enum):
             return NotImplemented
         return self.value == other.value
 
+class PositionDict(TypedDict):
+    """JSON-friendly position shape used at API/test boundaries.
+
+    Fields:
+    - x: float — X coordinate in world/game units
+    - y: float — Y coordinate in world/game units
+
+    Note:
+    - This is a DTO shape. Internal systems should convert this to
+      `src.backend.models.common.geometry.position.Position`.
+    """
+    x: float
+    y: float
+
+
 class UnitInitialState(TypedDict):
-    """Type definition for unit initialization parameters"""
-    # To be expanded based on requirements
-    position: Dict[str, float]  # x, y coordinates
+    """Startup parameters for creating/registering a unit (DTO layer).
+
+    Fields:
+    - position: PositionDict — world coordinates as floats (x, y)
+    - orientation: float — initial heading in degrees [0, 360)
+
+    Intent:
+    - Keep this JSON-serializable for external inputs/tests.
+    - Convert to domain objects (e.g., `Position`) inside unit creation.
+    """
+    position: PositionDict
     orientation: float
 
 class MovementOrders(TypedDict):
@@ -50,9 +73,7 @@ class TargetingParameters(TypedDict):
     target_id: str
     priority: int
 
-class DamageInfo(TypedDict):
-    """Type definition for damage application"""
-    amount: float  # Amount of damage to apply
+ 
 
 @dataclass
 class GameStateMachine:
@@ -348,8 +369,12 @@ class GameStateManager:
     
     # Delegate unit operations to UnitManager
     def add_unit(self, unit_type: UnitType, initial_state: UnitInitialState) -> str:
-        """Add a new unit."""
-        return self._unit_manager.add_unit(unit_type, initial_state)
+        """Add a new unit.
+
+        Currently not implemented at the GSM layer. Unit creation and wiring
+        will be handled via a unit factory and registered into the UnitManager.
+        """
+        raise NotImplementedError
     
     def remove_unit(self, unit_id: str) -> None:
         """Remove a unit."""
@@ -429,13 +454,4 @@ class GameStateManager:
         # TODO: Implement targeting logic
         raise NotImplementedError
     
-    def apply_damage(self, unit_id: str, damage_info: DamageInfo) -> None:
-        """
-        Apply damage to a unit.
-        
-        Args:
-            unit_id: ID of the unit to damage
-            damage_info: Damage type and amount information
-        """
-        # TODO: Implement damage application logic
-        raise NotImplementedError 
+    

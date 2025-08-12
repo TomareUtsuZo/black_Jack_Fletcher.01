@@ -15,7 +15,7 @@ from datetime import datetime, timezone
 from typing import Generator, Dict, cast
 from src.backend.models.game_state_manager import (
     GameStateManager, GameState, UnitInitialState,
-    MovementOrders, TargetingParameters, DamageInfo
+    MovementOrders, TargetingParameters
 )
 from src.backend.models.common.time import GameTime, GameDuration, GameTimeManager
 from src.backend.models.common.time.time_zone import GameTimeZone
@@ -221,13 +221,9 @@ class TestGameStateManager:
         with pytest.raises(NotImplementedError):
             manager.set_unit_targeting("test_unit", targeting_params)
         
-        # Test damage application (should raise NotImplementedError)
-        # What is this? It does not look like the attack module looks
-        damage_info: DamageInfo = {
-            "amount": 50.0  # Simple damage amount, matching our current system
-        }
-        with pytest.raises(NotImplementedError):
-            manager.apply_damage("test_unit", damage_info)
+        # Damage application is handled at the unit/attack layer, not via GSM API.
+        # Ensure GSM does not expose a damage endpoint.
+        assert not hasattr(manager, "apply_damage")
     
     def test_unit_state_updates(self, game_time_manager: GameTimeManager) -> None:
         """Test that unit states are properly updated during tick."""
