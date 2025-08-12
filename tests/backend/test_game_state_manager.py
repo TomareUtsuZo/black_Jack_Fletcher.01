@@ -13,10 +13,8 @@ Tests the following:
 import pytest
 from datetime import datetime, timezone
 from typing import Generator, Dict, cast
-from src.backend.models.game_state_manager import (
-    GameStateManager, GameState, UnitInitialState,
-    MovementOrders, TargetingParameters
-)
+from src.backend.models.game_state_manager import GameStateManager, GameState
+from src.backend.models.game.dto import UnitInitialState, MovementOrders, TargetingParameters
 from src.backend.models.common.time import GameTime, GameDuration, GameTimeManager
 from src.backend.models.common.time.time_zone import GameTimeZone
 from src.backend.models.units.types.unit_type import UnitType

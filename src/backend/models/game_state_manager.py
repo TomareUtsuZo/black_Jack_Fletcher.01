@@ -1,14 +1,38 @@
 """
 Game state management.
 
-This module provides centralized game state management through a singleton GameStateManager.
-The manager coordinates between different subsystems:
+This module provides centralized game state management through a singleton
+GameStateManager. The manager coordinates between different subsystems:
 - Time management (GameTimeController)
 - Unit management (UnitManager)
 - State management (GameStateMachine)
+
+Design notes: DTOs at the boundary
+- This module accepts JSON-friendly data transfer objects (DTOs) for inputs
+  that naturally originate outside the domain layer (e.g., API payloads,
+  WebSocket messages, test fixtures). See `src.backend.models.game.dto`:
+  - PositionDict: {"x": float, "y": float}
+  - UnitInitialState: initial unit setup data
+  - MovementOrders: waypoints + speed
+  - TargetingParameters: target identifier + priority
+
+- Purpose: Keep GSM orchestration-only. GSM owns sequencing (time, unit
+  ticks, state transitions), not the mechanics of movement/attack. DTOs
+  allow GSM's public API to be simple, JSON-serializable, and stable across
+  layers.
+
+- Conversion: Convert DTOs to domain objects at the appropriate layer:
+  - API/controllers: parse request JSON → DTO → domain types when calling
+    deeper subsystems.
+  - Movement/Attack subsystems: consume domain types (e.g., Position,
+    NauticalMiles) — do not depend on DTOs.
+
+- Outputs: When emitting data to clients, serialize domain objects at the
+  API/serialization layer (e.g., Position.to_dict()). GSM itself does not
+  perform serialization.
 """
 
-from typing import Dict, Optional, List, Any, ClassVar, TypedDict, Final, Literal, Callable
+from typing import Dict, Optional, List, Any, ClassVar, Final, Literal, Callable
 from enum import Enum, auto
 from dataclasses import dataclass, field
 from .common.time import GameTime, GameDuration, GameTimeManager
@@ -32,46 +56,7 @@ class GameState(Enum):
             return NotImplemented
         return self.value == other.value
 
-class PositionDict(TypedDict):
-    """JSON-friendly position shape used at API/test boundaries.
-
-    Fields:
-    - x: float — X coordinate in world/game units
-    - y: float — Y coordinate in world/game units
-
-    Note:
-    - This is a DTO shape. Internal systems should convert this to
-      `src.backend.models.common.geometry.position.Position`.
-    """
-    x: float
-    y: float
-
-
-class UnitInitialState(TypedDict):
-    """Startup parameters for creating/registering a unit (DTO layer).
-
-    Fields:
-    - position: PositionDict — world coordinates as floats (x, y)
-    - orientation: float — initial heading in degrees [0, 360)
-
-    Intent:
-    - Keep this JSON-serializable for external inputs/tests.
-    - Convert to domain objects (e.g., `Position`) inside unit creation.
-    """
-    position: PositionDict
-    orientation: float
-
-class MovementOrders(TypedDict):
-    """Type definition for unit movement orders"""
-    # To be expanded based on requirements
-    waypoints: List[Dict[str, float]]  # List of x,y coordinates
-    speed: float
-
-class TargetingParameters(TypedDict):
-    """Type definition for unit targeting parameters"""
-    # To be expanded based on requirements
-    target_id: str
-    priority: int
+from .game.dto import PositionDict, UnitInitialState, MovementOrders, TargetingParameters
 
  
 
