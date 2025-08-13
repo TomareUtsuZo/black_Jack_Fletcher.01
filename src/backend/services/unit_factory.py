@@ -177,7 +177,7 @@ class UnitFactory:
             max_fuel=template.max_fuel,
             current_fuel=template.max_fuel,
             crew=template.crew,
-            tonnage=template.tonnage
+            tonnage=int(template.tonnage)
         )
     
     @classmethod

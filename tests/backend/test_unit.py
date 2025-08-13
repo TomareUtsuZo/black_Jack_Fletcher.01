@@ -32,7 +32,7 @@ class TestUnit:
             max_fuel=1000.0,
             current_fuel=1000.0,
             crew=273,
-            tonnage=2100.0
+            tonnage=2100
         )
     
     @pytest.fixture
@@ -56,7 +56,7 @@ class TestUnit:
             max_fuel=1200.0,
             current_fuel=1200.0,
             crew=1142,
-            tonnage=13600.0
+            tonnage=13600
         )
 
     def test_unit_initialization(self, basic_unit: Unit) -> None:

@@ -45,8 +45,8 @@ class UnitAttributes:
     current_fuel: float
     crew: int  # Standard complement (probably not relevant, but good for stories)
     tonnage: int  # Tonnage of the ship (probably not relevant, but good for stories)
-    visual_range: NauticalMiles  # Visual detection range in nautical miles
-    visual_detection_rate: float  # Detection rate for visual detection, a float value (e.g., 0.0 to 1.0 representing probability)
+    visual_range: NauticalMiles = NauticalMiles(15.0)  # Visual detection range in nautical miles (default)
+    visual_detection_rate: float = 0.8  # Detection rate for visual detection (0.0-1.0, default)
 
 
 class Unit(UnitInterface):
@@ -74,10 +74,10 @@ class Unit(UnitInterface):
         max_fuel: float,
         current_fuel: float,
         crew: int,
-        visual_range: NauticalMiles,
-        visual_detection_rate: float,  # Detection rate for visual detection
-        tonnage: int
-    ) -> None:
+        tonnage: int,
+        visual_range: NauticalMiles = NauticalMiles(15.0),
+        visual_detection_rate: float = 0.8  # Detection rate for visual detection
+        ) -> None:
         """
         Initialize a new Unit with the given attributes.
         
@@ -127,7 +127,7 @@ class Unit(UnitInterface):
         )
         self.state: UnitState = UnitState.OPERATING  # Default state
         self.crew_status = 'surviving'  # Default crew status; can be 'surviving', 'rescued', 'captured', etc.
-        self._modules: Dict[str, UnitModule] = {}
+        self._modules: Dict[str, Any] = {}
     
     def add_module(self, name: str, module: UnitModule) -> None:
         """
@@ -143,7 +143,7 @@ class Unit(UnitInterface):
         module.initialize()
         self._modules[name] = module
     
-    def get_module(self, name: str) -> Optional[UnitModule]:
+    def get_module(self, name: str) -> Optional[Any]:
         """
         Retrieve a module by name
         
@@ -162,8 +162,8 @@ class Unit(UnitInterface):
         
     @property
     def is_alive(self) -> bool:
-        """Check if the unit is still alive (alias for is_not_sunk for backward compatibility)"""
-        return self.is_not_sunk
+        """Unit is considered alive only while OPERATING."""
+        return self.state == UnitState.OPERATING
         
     def is_in_state(self, state: UnitState) -> bool:
         """Check if the unit is in a specific state"""

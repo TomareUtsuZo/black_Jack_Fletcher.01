@@ -13,7 +13,7 @@ from enum import Enum, auto
 from dataclasses import dataclass, field
 from .common.time import GameTime, GameDuration, GameTimeManager  # Core time value objects
 from .common.time.game_scheduler import GameScheduler  # Real-time tick scheduler (used by controller)
-from .units.unit import Unit  # Domain unit class (ships, etc.)
+
 from .units.types.unit_type import UnitType  # Enum/type for unit categories
 from src.backend.models.units.unit_interface import UnitInterface  # Protocol for units consumed by managers
 from src.backend.models.common.time.time_interface import TimeInterface  # Protocol for time-like objects

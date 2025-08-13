@@ -13,8 +13,11 @@ from src.backend.services.game_service import game_manager
 # Get the absolute path to the frontend directory
 frontend_dir: str = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'frontend'))
 
-app: Flask = Flask(__name__)
-# Removed SocketIO instance as it's no longer needed
+# Configure template and static directories to match tests' expectations
+templates_dir: str = os.path.join(frontend_dir, 'views', 'templates')
+static_dir: str = os.path.join(frontend_dir, 'views', 'static')
+
+app: Flask = Flask(__name__, template_folder=templates_dir, static_folder=static_dir)
 
 # Import routes after app creation to avoid circular imports
 # Removed import of game_routes as we're evaluating its necessity

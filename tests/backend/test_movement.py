@@ -30,7 +30,7 @@ def test_unit_attributes() -> UnitAttributes:
         max_fuel=1000.0,
         current_fuel=1000.0,
         crew=100,
-        tonnage=1000.0
+        tonnage=1000
     )
 
 @pytest.fixture
