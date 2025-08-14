@@ -162,6 +162,7 @@ class Attack(UnitModule):
             damage: Amount of damage to apply (currently a simple float value)
         """ 
         target.take_damage(damage)  # Use take_damage to ensure proper state transitions
+        logging.info(f"{self.attacker.attributes.hull_number} attacked {target.attributes.hull_number} for {damage:g} damage")
         
     def perform_upkeep(self) -> None:
         """

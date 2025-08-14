@@ -1,258 +1,68 @@
 """
 Game state management.
 
-This module provides centralized game state management through a singleton GameStateManager.
-The manager coordinates between different subsystems:
+This module provides centralized game state management through a singleton
+GameStateManager. The manager coordinates between different subsystems:
 - Time management (GameTimeController)
 - Unit management (UnitManager)
 - State management (GameStateMachine)
 """
 
-from typing import Dict, Optional, List, Any, ClassVar, TypedDict, Final, Literal, Callable
+from typing import Dict, Optional, List, Any, ClassVar, Final, Literal, Callable
 from enum import Enum, auto
 from dataclasses import dataclass, field
-from .common.time import GameTime, GameDuration, GameTimeManager
-from .common.time.game_scheduler import GameScheduler
-from .units.unit import Unit
-from .units.types.unit_type import UnitType
-from src.backend.models.units.unit_interface import UnitInterface
-from src.backend.models.common.time.time_interface import TimeInterface
+from .common.time import GameTime, GameDuration, GameTimeManager  # Core time value objects
+from .common.time.game_scheduler import GameScheduler  # Real-time tick scheduler (used by controller)
+
+from .units.types.unit_type import UnitType  # Enum/type for unit categories
+from src.backend.models.units.unit_interface import UnitInterface  # Protocol for units consumed by managers
+from src.backend.models.common.time.time_interface import TimeInterface  # Protocol for time-like objects
 import logging
 
-class GameState(Enum):
-    """Game state enumeration"""
-    INITIALIZING = auto()
-    RUNNING = auto()
-    PAUSED = auto()
-    COMPLETED = auto()
+from .game.state_machine import GameState, GameStateMachine  # State rules and transitions
 
-    def __eq__(self, other: object) -> bool:
-        """Compare game states."""
-        if not isinstance(other, GameState):
-            return NotImplemented
-        return self.value == other.value
+# Re-export for compatibility with tests and external imports
+__all__ = [
+    "GameStateManager",
+    "GameState",
+]
 
-class PositionDict(TypedDict):
-    """JSON-friendly position shape used at API/test boundaries.
+from .game.dto import (
+    PositionDict,  # JSON-friendly coordinate DTO
+    UnitInitialState,  # DTO for initial unit setup
+    MovementOrders,  # DTO for movement commands
+    TargetingParameters,  # DTO for targeting intent
+)
+"""
+Design notes: DTOs at the boundary
+- This module accepts JSON-friendly data transfer objects (DTOs) for inputs
+  that naturally originate outside the domain layer (e.g., API payloads,
+  WebSocket messages, test fixtures). See `src.backend.models.game.dto`:
+  - PositionDict: {"x": float, "y": float}
+  - UnitInitialState: initial unit setup data
+  - MovementOrders: waypoints + speed
+  - TargetingParameters: target identifier + priority
 
-    Fields:
-    - x: float — X coordinate in world/game units
-    - y: float — Y coordinate in world/game units
+- Purpose: Keep GSM orchestration-only. GSM owns sequencing (time, unit
+  ticks, state transitions), not the mechanics of movement/attack. DTOs
+  allow GSM's public API to be simple, JSON-serializable, and stable across
+  layers.
 
-    Note:
-    - This is a DTO shape. Internal systems should convert this to
-      `src.backend.models.common.geometry.position.Position`.
-    """
-    x: float
-    y: float
+- Conversion: Convert DTOs to domain objects at the appropriate layer:
+  - API/controllers: parse request JSON → DTO → domain types when calling
+    deeper subsystems.
+  - Movement/Attack subsystems: consume domain types (e.g., Position,
+    NauticalMiles) — do not depend on DTOs.
 
-
-class UnitInitialState(TypedDict):
-    """Startup parameters for creating/registering a unit (DTO layer).
-
-    Fields:
-    - position: PositionDict — world coordinates as floats (x, y)
-    - orientation: float — initial heading in degrees [0, 360)
-
-    Intent:
-    - Keep this JSON-serializable for external inputs/tests.
-    - Convert to domain objects (e.g., `Position`) inside unit creation.
-    """
-    position: PositionDict
-    orientation: float
-
-class MovementOrders(TypedDict):
-    """Type definition for unit movement orders"""
-    # To be expanded based on requirements
-    waypoints: List[Dict[str, float]]  # List of x,y coordinates
-    speed: float
-
-class TargetingParameters(TypedDict):
-    """Type definition for unit targeting parameters"""
-    # To be expanded based on requirements
-    target_id: str
-    priority: int
-
+- Outputs: When emitting data to clients, serialize domain objects at the
+  API/serialization layer (e.g., Position.to_dict()). GSM itself does not
+  perform serialization.
+  """
  
 
-@dataclass
-class GameStateMachine:
-    """
-    Manages game state transitions and validation.
-    
-    This class ensures that:
-    - State transitions are valid
-    - State changes are properly logged
-    - State-dependent operations are validated
-    """
-    _state: GameState = field(default_factory=lambda: GameState.INITIALIZING)
-    
-    # State transition error messages
-    ERROR_START_FROM_INIT: Final[str] = "Game can only be started from INITIALIZING state"
-    ERROR_NOT_PAUSED: Final[str] = "Game is not paused"
-    
-    @property
-    def current_state(self) -> GameState:
-        """Get the current game state."""
-        return self._state
-    
-    @property
-    def is_paused(self) -> bool:
-        """Check if the game is paused."""
-        return self._state == GameState.PAUSED
-    
-    def transition_to_running(self) -> None:
-        """Transition to RUNNING state."""
-        if self._state != GameState.INITIALIZING:
-            raise RuntimeError(self.ERROR_START_FROM_INIT)
-        self._state = GameState.RUNNING
-    
-    def pause(self) -> None:
-        """Transition to PAUSED state."""
-        if self._state == GameState.RUNNING:
-            self._state = GameState.PAUSED
-    
-    def unpause(self) -> None:
-        """Transition from PAUSED to RUNNING state."""
-        if self._state != GameState.PAUSED:
-            raise RuntimeError(self.ERROR_NOT_PAUSED)
-        self._state = GameState.RUNNING
-    
-    def complete(self) -> None:
-        """Transition to COMPLETED state."""
-        if self._state != GameState.COMPLETED:
-            self._state = GameState.COMPLETED
-    
-    def can_process_tick(self) -> bool:
-        """Check if tick processing is allowed."""
-        return self._state == GameState.RUNNING
+from .game.time_controller import GameTimeController  # Time rate and scheduler orchestration
 
-@dataclass
-class GameTimeController:
-    """
-    Controls game time progression and scheduling.
-    
-    This class manages:
-    - Time rate configuration
-    - Time advancement
-    - Tick scheduling
-    
-    Design Pattern:
-    - Acts as a higher-level controller over GameTimeManager
-    - Separates time rate control from basic time tracking
-    - Allows for dependency injection of time management
-    """
-    # The GameTimeManager can be injected for testing or advanced usage
-    _init_time_manager: Optional[GameTimeManager]
-    
-    # Time rate constants
-    DEFAULT_TIME_RATE: Final[GameDuration] = GameDuration.from_minutes(1)
-    MIN_TIME_RATE: Final[GameDuration] = GameDuration.from_seconds(1)
-    MAX_TIME_RATE: Final[GameDuration] = GameDuration.from_hours(1)
-    
-    # Scheduler configuration
-    DEFAULT_TICK_DELAY: Final[float] = 1.0
-    
-    # Fields with defaults must come after fields without defaults
-    _time_manager: GameTimeManager = field(init=False)  # Will be set in __post_init__
-    _time_rate: GameDuration = field(default_factory=lambda: GameTimeController.DEFAULT_TIME_RATE)
-    _scheduler: GameScheduler = field(default_factory=lambda: GameScheduler(tick_delay=GameTimeController.DEFAULT_TICK_DELAY))
-    
-    def __post_init__(self) -> None:
-        """
-        Initialize after dataclass fields are set.
-        
-        This ensures all fields are properly initialized before we use them.
-        The _init_time_manager is either used or replaced with a new instance,
-        allowing for both simple usage and testing scenarios.
-        """
-        # Initialize _time_manager with the stored value or create a new one
-        self._time_manager = self._init_time_manager if self._init_time_manager is not None else GameTimeManager()
-        
-        # Clean up the temporary storage
-        del self._init_time_manager
-    
-    @property
-    def current_time(self) -> GameTime:
-        """Get the current game time."""
-        return self._time_manager.time_now
-    
-    @property
-    def time_rate(self) -> GameDuration:
-        """Get the current time rate."""
-        return self._time_rate
-    
-    def set_time_rate(self, new_rate: GameDuration) -> None:
-        """Set a new time progression rate."""
-        if new_rate < self.MIN_TIME_RATE or new_rate > self.MAX_TIME_RATE:
-            raise ValueError(
-                f"Time rate must be between {self.MIN_TIME_RATE.seconds} seconds and "
-                f"{self.MAX_TIME_RATE.seconds} seconds per tick"
-            )
-        self._time_rate = new_rate
-    
-    def set_time_rate_seconds(self, seconds_per_tick: float) -> None:
-        """Set time rate in seconds per tick."""
-        self.set_time_rate(GameDuration.from_seconds(seconds_per_tick))
-    
-    def set_time_rate_minutes(self, minutes_per_tick: float) -> None:
-        """Set time rate in minutes per tick."""
-        self.set_time_rate(GameDuration.from_minutes(minutes_per_tick))
-    
-    def advance_time(self) -> GameTime:
-        """Advance game time by one tick."""
-        return self._time_manager.advance_time(self._time_rate)
-    
-    def start_scheduler(self, tick_handler: Any) -> None:
-        """Start the game scheduler."""
-        self._scheduler.start(tick_handler)
-    
-    def stop_scheduler(self) -> None:
-        """Stop the game scheduler."""
-        self._scheduler.stop()
-
-@dataclass
-class UnitManager:
-    """
-    Manages game units and their states.
-    
-    This class handles:
-    - Unit creation and removal
-    - Unit state updates
-    - Unit queries and lookups
-    """
-    _units: Dict[str, UnitInterface] = field(default_factory=dict)
-    
-    def add_unit(self, unit: UnitInterface, initial_state: UnitInitialState) -> str:
-        """Add a new unit."""
-        unit_id = str(unit.get_unit_state()['unit_id'])
-        self._units[unit_id] = unit
-        return unit_id
-    
-    def remove_unit(self, unit_id: str) -> None:
-        """Remove a unit."""
-        # TODO: Implement unit removal
-        raise NotImplementedError
-    
-    def get_unit(self, unit_id: str) -> Optional[UnitInterface]:
-        """Get a unit by ID."""
-        return self._units.get(unit_id)
-    
-    def get_all_units(self) -> List[UnitInterface]:
-        """Get all units."""
-        return list(self._units.values())
-    
-    def update_unit_states(self) -> None:
-        """
-        Update all unit states by performing their tick operations.
-        This includes:
-        - Movement updates
-        - Detection checks
-        - Combat resolution
-        - State transitions
-        """
-        for unit in self._units.values():
-            unit.perform_tick()
+from .game.unit_manager import UnitManager  # Registry and per-tick iteration of units
 
 @dataclass
 class GameStateManager:
@@ -325,13 +135,15 @@ class GameStateManager:
     
     def start(self) -> None:
         """Start the game."""
-        self._state_machine.transition_to_running()
+        self._state_machine.start_game()
         self._time_controller.start_scheduler(self.tick)
     
     def stop(self) -> None:
-        """Stop the game."""
-        if self._state_machine.current_state == GameState.COMPLETED:
-            return
+        """Stop the game (idempotent).
+
+        Always stops the scheduler and asks the state machine to complete.
+        The state machine handles redundant transitions internally.
+        """
         self._time_controller.stop_scheduler()
         self._state_machine.complete()
     
@@ -362,8 +174,12 @@ class GameStateManager:
             return
         
         try:
-            self._time_controller.advance_time()
-            self._unit_manager.update_unit_states()
+            # Advance time and derive delta in hours for movement (knots = nm/hour)
+            before = self._time_controller.current_time
+            after = self._time_controller.advance_time()
+            seconds = self._time_controller.time_rate.seconds
+            delta_hours = seconds / 3600.0
+            self._unit_manager.update_unit_states(delta_hours)
         except ValueError as e:
             self._handle_time_limit_reached(e)
     

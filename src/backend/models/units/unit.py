@@ -45,8 +45,8 @@ class UnitAttributes:
     current_fuel: float
     crew: int  # Standard complement (probably not relevant, but good for stories)
     tonnage: int  # Tonnage of the ship (probably not relevant, but good for stories)
-    visual_range: NauticalMiles  # Visual detection range in nautical miles
-    visual_detection_rate: float  # Detection rate for visual detection, a float value (e.g., 0.0 to 1.0 representing probability)
+    visual_range: NauticalMiles = NauticalMiles(15.0)  # Visual detection range in nautical miles (default)
+    visual_detection_rate: float = 0.8  # Detection rate for visual detection (0.0-1.0, default)
 
 
 class Unit(UnitInterface):
@@ -74,10 +74,10 @@ class Unit(UnitInterface):
         max_fuel: float,
         current_fuel: float,
         crew: int,
-        visual_range: NauticalMiles,
-        visual_detection_rate: float,  # Detection rate for visual detection
-        tonnage: int
-    ) -> None:
+        tonnage: int,
+        visual_range: NauticalMiles = NauticalMiles(15.0),
+        visual_detection_rate: float = 0.8  # Detection rate for visual detection
+        ) -> None:
         """
         Initialize a new Unit with the given attributes.
         
@@ -127,7 +127,7 @@ class Unit(UnitInterface):
         )
         self.state: UnitState = UnitState.OPERATING  # Default state
         self.crew_status = 'surviving'  # Default crew status; can be 'surviving', 'rescued', 'captured', etc.
-        self._modules: Dict[str, UnitModule] = {}
+        self._modules: Dict[str, Any] = {}
     
     def add_module(self, name: str, module: UnitModule) -> None:
         """
@@ -143,7 +143,7 @@ class Unit(UnitInterface):
         module.initialize()
         self._modules[name] = module
     
-    def get_module(self, name: str) -> Optional[UnitModule]:
+    def get_module(self, name: str) -> Optional[Any]:
         """
         Retrieve a module by name
         
@@ -162,8 +162,8 @@ class Unit(UnitInterface):
         
     @property
     def is_alive(self) -> bool:
-        """Check if the unit is still alive (alias for is_not_sunk for backward compatibility)"""
-        return self.is_not_sunk
+        """Unit is considered alive only while OPERATING."""
+        return self.state == UnitState.OPERATING
         
     def is_in_state(self, state: UnitState) -> bool:
         """Check if the unit is in a specific state"""
@@ -222,7 +222,11 @@ class Unit(UnitInterface):
         Args:
             destination: The target position to move to
         """
-        self.attributes.destination = destination
+        movement_module = self.get_module('movement')
+        if movement_module:
+            movement_module.set_destination(destination)
+        else:
+            self.attributes.destination = destination
     
     def set_speed(self, speed: NauticalMiles) -> None:
         """
@@ -240,7 +244,7 @@ class Unit(UnitInterface):
             raise ValueError(f"Speed cannot exceed maximum speed of {self.attributes.max_speed}")
         self.attributes.current_speed = speed
     
-    def perform_tick(self) -> None:
+    def perform_tick(self, delta_hours: float) -> None:
         """
         Perform internal tasks for the unit during a game tick.
         
@@ -250,16 +254,20 @@ class Unit(UnitInterface):
         # Handle movement if the module is present
         movement_module = self.get_module('movement')
         if movement_module:
-            # Assuming the movement module has a method to perform movement
-            movement_module.perform_movement()  # Call the movement logic
+            movement_module.update(delta_hours)
     
         # Handle detection if the module is present
         detection_module = self.get_module('detection')
         if detection_module:
             detection_rate = self.attributes.visual_detection_rate
             visual_range = self.attributes.visual_range
-            # detected_units would be called if needed
-            detected_units = detection_module.perform_visual_detection(detection_rate, visual_range)  
+            from src.backend.models.common.time.game_time import GameTime
+            # Approximate current time via default start plus total delta isn't tracked here;
+            # rely on GSM to pass actual GameTime when needed (scenario code uses GSM).
+            current_time = GameTime.default_start_time()
+            detected_units = detection_module.perform_visual_detection(
+                detection_rate, visual_range, current_time
+            )
             self.perform_attack(detected_units)
         
 
