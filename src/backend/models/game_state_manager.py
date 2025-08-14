@@ -174,8 +174,12 @@ class GameStateManager:
             return
         
         try:
-            self._time_controller.advance_time()
-            self._unit_manager.update_unit_states()
+            # Advance time and derive delta in hours for movement (knots = nm/hour)
+            before = self._time_controller.current_time
+            after = self._time_controller.advance_time()
+            seconds = self._time_controller.time_rate.seconds
+            delta_hours = seconds / 3600.0
+            self._unit_manager.update_unit_states(delta_hours)
         except ValueError as e:
             self._handle_time_limit_reached(e)
     

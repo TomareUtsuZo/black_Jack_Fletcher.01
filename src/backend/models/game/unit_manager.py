@@ -48,13 +48,14 @@ class UnitManager:
         """Return all registered units as a list."""
         return list(self._units.values())
 
-    def update_unit_states(self) -> None:
+    def update_unit_states(self, delta_hours: float) -> None:
         """Perform per-tick updates for all units (movement, detection, combat).
 
         Delegates to each unit's `perform_tick()` to keep concerns localized
         to the unit and its modules.
         """
         for unit in self._units.values():
-            unit.perform_tick()
+            # type: ignore[arg-type]
+            unit.perform_tick(delta_hours)  # pass delta in hours
 
 

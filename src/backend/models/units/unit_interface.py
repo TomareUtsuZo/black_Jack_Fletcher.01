@@ -7,8 +7,12 @@ from ..common.geometry.nautical_miles import NauticalMiles
 
 class UnitInterface(ABC):
     @abstractmethod
-    def perform_tick(self) -> None:
-        """Perform unit updates during a game tick."""
+    def perform_tick(self, delta_hours: float) -> None:
+        """Perform unit updates during a game tick.
+
+        Args:
+            delta_hours: Time advanced this tick in in‑game hours
+        """
         pass
 
     @abstractmethod

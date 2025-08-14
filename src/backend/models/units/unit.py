@@ -222,7 +222,11 @@ class Unit(UnitInterface):
         Args:
             destination: The target position to move to
         """
-        self.attributes.destination = destination
+        movement_module = self.get_module('movement')
+        if movement_module:
+            movement_module.set_destination(destination)
+        else:
+            self.attributes.destination = destination
     
     def set_speed(self, speed: NauticalMiles) -> None:
         """
@@ -240,7 +244,7 @@ class Unit(UnitInterface):
             raise ValueError(f"Speed cannot exceed maximum speed of {self.attributes.max_speed}")
         self.attributes.current_speed = speed
     
-    def perform_tick(self) -> None:
+    def perform_tick(self, delta_hours: float) -> None:
         """
         Perform internal tasks for the unit during a game tick.
         
@@ -250,16 +254,20 @@ class Unit(UnitInterface):
         # Handle movement if the module is present
         movement_module = self.get_module('movement')
         if movement_module:
-            # Assuming the movement module has a method to perform movement
-            movement_module.perform_movement()  # Call the movement logic
+            movement_module.update(delta_hours)
     
         # Handle detection if the module is present
         detection_module = self.get_module('detection')
         if detection_module:
             detection_rate = self.attributes.visual_detection_rate
             visual_range = self.attributes.visual_range
-            # detected_units would be called if needed
-            detected_units = detection_module.perform_visual_detection(detection_rate, visual_range)  
+            from src.backend.models.common.time.game_time import GameTime
+            # Approximate current time via default start plus total delta isn't tracked here;
+            # rely on GSM to pass actual GameTime when needed (scenario code uses GSM).
+            current_time = GameTime.default_start_time()
+            detected_units = detection_module.perform_visual_detection(
+                detection_rate, visual_range, current_time
+            )
             self.perform_attack(detected_units)
         
 
