@@ -162,7 +162,7 @@ class Unit(UnitInterface):
         
     @property
     def is_alive(self) -> bool:
-        """Unit is considered alive only while OPERATING."""
+        """Unit is considered alive only while OPERATING. Sinking and sunk units are not alive."""
         return self.state == UnitState.OPERATING
         
     def is_in_state(self, state: UnitState) -> bool:
@@ -197,7 +197,10 @@ class Unit(UnitInterface):
         # Check for state changes after all damage is applied
         if self.attributes.current_health <= 0 and self.state != UnitState.SINKING:
             self.state = UnitState.SINKING
-            logging.info(f"{self.attributes.name} has been sunk, crew status: {self.crew_status}")
+            # Stop the ship when it starts sinking
+            self.attributes.current_speed = NauticalMiles(0)
+            self.attributes.destination = None
+            logging.info(f"{self.attributes.name} has been critically damaged and is sinking, crew status: {self.crew_status}")
     
     def consume_fuel(self, amount: float) -> bool:
         """
@@ -251,10 +254,11 @@ class Unit(UnitInterface):
         This method handles all unit-specific updates, such as detection and movement,
         to encapsulate behavior and reduce conflicts.
         """
-        # Handle movement if the module is present
-        movement_module = self.get_module('movement')
-        if movement_module:
-            movement_module.update(delta_hours)
+        # Handle movement if the module is present and ship is operating
+        if self.is_alive:  # Only move if the ship is operating (not sinking or sunk)
+            movement_module = self.get_module('movement')
+            if movement_module:
+                movement_module.update(delta_hours)
     
         # Handle detection if the module is present
         detection_module = self.get_module('detection')
@@ -274,10 +278,15 @@ class Unit(UnitInterface):
     def perform_attack(self, detected_units: List['Unit']) -> None:
         """
         Evaluate detected units and perform attacks on legitimate targets.
+        Will not attack if the unit is sinking or sunk.
         
         Args:
             detected_units: List of units that have been detected
         """
+        # Don't attack if the ship is sinking or sunk
+        if not self.is_alive:
+            return
+            
         # Get or create attack module
         attack_module = self.get_module('attack')
         if not attack_module:
