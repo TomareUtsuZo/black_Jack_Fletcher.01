@@ -28,6 +28,12 @@ This project uses [Task](https://taskfile.dev/) for managing development tasks. 
   - Activates virtual environment
   - Starts the backend server
 
+- `task run-scenario` - Run the naval combat test scenario
+  - Simulates a naval engagement between USS Fletcher and IJN Yukikaze
+  - Tests ship movement, detection, combat, and damage systems
+  - Provides detailed output of ship states and interactions
+  - Requires activated virtual environment
+
 ### Testing
 - `task test-backend` - Run all backend tests
   - Comprehensive test suite for all backend functionality
@@ -89,6 +95,11 @@ For detailed development guidelines, coding standards, and project architecture,
    task test-functional  # Run functional tests only
    ```
 
+6. Run the test scenario:
+   ```bash
+   task run-scenario  # Simulates naval combat between ships
+   ```
+
 ## Development Workflow
 
 1. **Before Writing Code**:
@@ -119,3 +130,23 @@ For detailed information about:
 - Code style and formatting → See [Development Guide: Code Style](DEVELOPMENT_GUIDE.md#3-code-style-and-readability)
 - Type checking → See [Development Guide: Type Hints](DEVELOPMENT_GUIDE.md#type-hints-and-static-checking)
 - Testing strategy → See [Development Guide: Testing](DEVELOPMENT_GUIDE.md#testing-strategy)
+
+## Test Scenario
+
+The naval combat test scenario (`task run-scenario`) simulates a battle between two destroyers:
+- USS Fletcher (DD-445) - Fletcher-class destroyer
+- IJN Yukikaze (DD-516) - Kagero-class destroyer
+
+The scenario demonstrates:
+- Ship movement and navigation
+- Visual detection systems
+- Combat engagement rules
+- Damage and sinking mechanics
+- Task force coordination
+
+The output includes:
+- Game time progression
+- Ship positions and separation
+- Detection events
+- Combat results
+- Ship status changes (damage, sinking)

@@ -4,11 +4,7 @@ tasks:
   check-venv:
     internal: true
     cmds:
-      - |
-        if ($null -eq $env:VIRTUAL_ENV) {
-            Write-Host "Virtual environment not activated. Run venv/Scripts/activate first." -ForegroundColor Red
-            exit 1
-        }
+      - powershell -Command "if (-not (Test-Path env:VIRTUAL_ENV)) { Write-Host 'Virtual environment not activated. Run venv/Scripts/activate first.' -ForegroundColor Red; exit 1 }"
 
   setup:
     desc: Set up development environment
@@ -21,6 +17,12 @@ tasks:
     desc: Run Flask application
     cmds:
       - python -m src.backend.app
+
+  run-scenario:
+    desc: Run the naval combat test scenario
+    deps: [check-venv]
+    cmds:
+      - python -m src.backend.models.game.scenarios.test_scenario
 
   test:
     desc: Run all tests
@@ -71,4 +73,3 @@ tasks:
     cmds:
       - python -m black src tests
       - python -m isort src tests
-
