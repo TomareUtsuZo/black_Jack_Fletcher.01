@@ -131,17 +131,6 @@ class Attack(UnitModule):
         # This is a placeholder for future critical hit system
         pass
 
-    def apply_damage_to_current_health(self, target: Unit, damage: float) -> None:
-        """
-        Apply the calculated damage to the target's current health.
-        This handles the basic health reduction.
-        
-        Args:
-            target: The unit receiving the damage
-            damage: Amount of damage to apply
-        """
-        target.attributes.current_health = max(0.0, target.attributes.current_health - damage)
-
     def send_damage_to_target(self, target: Unit, damage: float) -> None:
         """
         Send calculated damage to the target unit.
@@ -175,4 +164,3 @@ class Attack(UnitModule):
         """
         # Currently a placeholder for future implementation
         logging.debug(f"{self.attacker.attributes.name} performing attack upkeep")
-
