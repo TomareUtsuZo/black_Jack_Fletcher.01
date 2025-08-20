@@ -1,20 +1,20 @@
 from typing import List, Tuple
 import math
 
-from src.backend.models.units.unit import Unit
-from src.backend.models.units.test_ships import (
+from backend.models.units.unit import Unit
+from backend.models.units.test_ships import (
     USS_FLETCHER,
     IJN_YUKIKAZE,
 )
-from src.backend.models.units.modules.detection import DetectionModule
-from src.backend.models.units.modules.attack import Attack
-from src.backend.models.units.modules.movement import MovementModule
-from src.backend.models.common.geometry.position import Position
-from src.backend.models.common.geometry.nautical_miles import NauticalMiles
-from src.backend.models.game_state_manager import GameStateManager
-from src.backend.models.units.unit import UnitState
-from src.backend.models.common.time.game_time import GameTime
-from src.backend.models.common.geometry.vincenty import calculate_vincenty_distance
+from backend.models.units.modules.detection import DetectionModule
+from backend.models.units.modules.attack import Attack
+from backend.models.units.modules.movement import MovementModule
+from backend.models.common.geometry.position import Position
+from backend.models.common.geometry.nautical_miles import NauticalMiles
+from backend.models.game_state_manager import GameStateManager
+from backend.models.units.unit import UnitState
+from backend.models.common.time.game_time import GameTime
+from backend.models.common.geometry.vincenty import calculate_vincenty_distance
 
 
 WAKE_X = 166.62
@@ -179,3 +179,5 @@ def run_test_scenario(max_ticks: int = 60) -> None:
             prev_health[uid] = h_now
 
 
+if __name__ == "__main__":
+    run_test_scenario()
