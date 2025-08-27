@@ -22,12 +22,15 @@ from src.backend.models.units import UnitModule, UnitAttributes
 DESTINATION_REACHED_THRESHOLD = NauticalMiles(0.1)  # Within 0.1 nautical miles considered "at destination"
 
 def calculate_cartesian_distance(pos1: Position, pos2: Position) -> NauticalMiles:
-    """Return geodesic distance (nm) between two positions.
-
-    Uses haversine to convert degrees to nautical miles instead of treating
-    degrees as game units. This keeps distance math consistent with speed in nm/hr.
+    """Return distance (nm) between two positions in game units.
+    
+    In our game coordinate system, 1 unit = 1 nautical mile,
+    so we can use simple Cartesian distance.
     """
-    return calculate_haversine_distance(pos1, pos2)
+    dx = pos2.x - pos1.x
+    dy = pos2.y - pos1.y
+    distance = math.sqrt(dx * dx + dy * dy)
+    return NauticalMiles(distance)
 
 def calculate_cartesian_bearing(pos1: Position, pos2: Position) -> Bearing:
     """Calculate bearing between two positions using Cartesian geometry."""
@@ -179,17 +182,11 @@ class MovementModule:
             return (0.0, 0.0)
             
         bearing_rad = math.radians(self._state.current_bearing.degrees)
-        # Convert distance in nautical miles to degrees of lon/lat at current latitude
+        # Calculate movement in game units (1 unit = 1 nautical mile)
         distance_nm = distance.value
-        lat_deg = self.unit_attributes.position.y
-        # 1 degree latitude ≈ 60 nm; 1 degree longitude ≈ 60 nm * cos(latitude)
-        deg_per_nm_lat = 1.0 / 60.0
-        cos_lat = max(math.cos(math.radians(lat_deg)), 1e-6)
-        deg_per_nm_lon = 1.0 / (60.0 * cos_lat)
-
-        dlon_deg = distance_nm * math.sin(bearing_rad) * deg_per_nm_lon
-        dlat_deg = distance_nm * math.cos(bearing_rad) * deg_per_nm_lat
-        return (dlon_deg, dlat_deg)
+        dx = distance_nm * math.sin(bearing_rad)
+        dy = distance_nm * math.cos(bearing_rad)
+        return (dx, dy)
 
     def _update_position(self, dx: float, dy: float) -> None:
         """
@@ -242,6 +239,8 @@ class MovementModule:
                 self.unit_attributes.position = self.unit_attributes.destination
                 self.stop()
                 return
+            # If we have a destination, only move the shorter of the two distances
+            distance_can_travel = min(distance_can_travel, distance_to_destination)
         
         # Calculate and apply movement directly in game units
         dx, dy = self._calculate_movement_vector(distance_can_travel)
