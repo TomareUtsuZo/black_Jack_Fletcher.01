@@ -32,7 +32,11 @@ class TestUnit:
             max_fuel=1000.0,
             current_fuel=1000.0,
             crew=273,
-            tonnage=2100
+            tonnage=2100,
+            visual_range=NauticalMiles(5.0),
+            visual_detection_rate=0.8,
+            base_damage=25.0,  # Fletcher-class had powerful 5"/38 guns
+            optimal_range=NauticalMiles(7.5)  # 5"/38 guns were effective at medium range
         )
     
     @pytest.fixture
@@ -56,7 +60,11 @@ class TestUnit:
             max_fuel=1200.0,
             current_fuel=1200.0,
             crew=1142,
-            tonnage=13600
+            tonnage=13600,
+            visual_range=NauticalMiles(8.0),  # Better detection for cruisers
+            visual_detection_rate=0.85,
+            base_damage=35.0,  # Baltimore-class had 8"/55 caliber guns
+            optimal_range=NauticalMiles(10.0)  # Heavy cruiser guns had longer range
         )
 
     def test_unit_initialization(self, basic_unit: Unit) -> None:
@@ -182,3 +190,17 @@ class TestUnit:
 
         # Test retrieving non-existent module
         assert basic_unit.get_module("nonexistent") is None 
+
+    def test_damage_attributes(self, basic_unit: Unit, task_force_unit: Unit) -> None:
+        """Test that damage-related attributes are properly initialized"""
+        # Test destroyer (Fletcher-class) attributes
+        assert basic_unit.attributes.base_damage == 25.0
+        assert basic_unit.attributes.optimal_range.value == 7.5
+        assert basic_unit.attributes.visual_range.value == 5.0
+        assert basic_unit.attributes.visual_detection_rate == 0.8
+
+        # Test cruiser (Baltimore-class) attributes
+        assert task_force_unit.attributes.base_damage == 35.0
+        assert task_force_unit.attributes.optimal_range.value == 10.0
+        assert task_force_unit.attributes.visual_range.value == 8.0
+        assert task_force_unit.attributes.visual_detection_rate == 0.85

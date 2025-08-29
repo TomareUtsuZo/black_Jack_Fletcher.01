@@ -51,6 +51,8 @@ def _spec_to_unit(spec) -> Unit:
         tonnage=spec.tonnage,
         visual_range=spec.visual_range,
         visual_detection_rate=spec.visual_detection_rate,
+        base_damage=spec.base_damage,
+        optimal_range=spec.optimal_range,
     )
 
 

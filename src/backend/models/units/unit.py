@@ -47,6 +47,8 @@ class UnitAttributes:
     tonnage: int  # Tonnage of the ship (probably not relevant, but good for stories)
     visual_range: NauticalMiles = NauticalMiles(15.0)  # Visual detection range in nautical miles (default)
     visual_detection_rate: float = 0.8  # Detection rate for visual detection (0.0-1.0, default)
+    base_damage: float = 10.0  # Base damage output for the unit's primary weapon
+    optimal_range: NauticalMiles = NauticalMiles(10.0)  # Optimal firing range for maximum effectiveness
 
 
 class Unit(UnitInterface):
@@ -76,7 +78,9 @@ class Unit(UnitInterface):
         crew: int,
         tonnage: int,
         visual_range: NauticalMiles = NauticalMiles(15.0),
-        visual_detection_rate: float = 0.8  # Detection rate for visual detection
+        visual_detection_rate: float = 0.8,  # Detection rate for visual detection
+        base_damage: float = 10.0,  # Base damage output
+        optimal_range: NauticalMiles = NauticalMiles(10.0)  # Optimal firing range
         ) -> None:
         """
         Initialize a new Unit with the given attributes.
@@ -123,7 +127,9 @@ class Unit(UnitInterface):
             crew=crew,
             visual_range=visual_range,
             visual_detection_rate=visual_detection_rate,
-            tonnage=tonnage
+            tonnage=tonnage,
+            base_damage=base_damage,
+            optimal_range=optimal_range
         )
         self.state: UnitState = UnitState.OPERATING  # Default state
         self.crew_status = 'surviving'  # Default crew status; can be 'surviving', 'rescued', 'captured', etc.

@@ -36,6 +36,8 @@ units:
     tonnage: 2100
     visual_range: 5.0
     visual_detection_rate: 0.8
+    base_damage: 25.0  # Fletcher-class had powerful 5"/38 guns
+    optimal_range: 7.5  # 5"/38 guns were effective at medium range
 
   - name: "USS Talen"
     hull_number: "DD-666"
@@ -56,6 +58,8 @@ units:
     tonnage: 2100
     visual_range: 5.0
     visual_detection_rate: 0.8
+    base_damage: 25.0  # Fletcher-class had powerful 5"/38 guns
+    optimal_range: 7.5  # 5"/38 guns were effective at medium range
 
   - name: "IJN Yukikaze"
     hull_number: "DD-516"
@@ -76,6 +80,8 @@ units:
     tonnage: 2033
     visual_range: 6.0
     visual_detection_rate: 0.7
+    base_damage: 22.0  # Kagero-class had Type 3 127mm guns
+    optimal_range: 8.0  # Japanese guns typically had longer range
 
   - name: "Queen Anne's Revenge II"
     hull_number: "PRV-001"
@@ -96,5 +102,7 @@ units:
     tonnage: 1500
     visual_range: 4.0
     visual_detection_rate: 0.6
+    base_damage: 15.0  # Lighter armament than military vessels
+    optimal_range: 5.0  # Shorter range for close-quarters combat
 
 

@@ -9,7 +9,7 @@ from flask import Flask
 from flask.testing import FlaskClient
 from src.backend.app import app as flask_app
 
-def pytest_configure(config):
+def pytest_configure(config: pytest.Config) -> None:
     try:
         project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
         src_path = os.path.join(project_root, 'src')

@@ -46,6 +46,10 @@ class ShipSpecification:
     # Detection
     visual_range: NauticalMiles  # Range for visual detection in nautical miles
     visual_detection_rate: float  # Probability rate for visual detection (e.g., 0.0 to 1.0)
+    
+    # Combat
+    base_damage: float = 10.0  # Base damage output for the unit's primary weapon
+    optimal_range: NauticalMiles = NauticalMiles(10.0)  # Optimal firing range for maximum effectiveness
 
 # Test Ships - Using real Fletcher-class destroyers and other historical ships as examples
 
@@ -75,6 +79,8 @@ USS_FLETCHER = ShipSpecification(
     tonnage=2100,  # Updated to integer
     visual_range=NauticalMiles(5),
     visual_detection_rate=0.8,
+    base_damage=25.0,  # Fletcher-class had powerful 5"/38 guns
+    optimal_range=NauticalMiles(7.5),  # 5"/38 guns were effective at medium range
 )
 
 USS_TALEN = ShipSpecification(
@@ -98,6 +104,8 @@ USS_TALEN = ShipSpecification(
     tonnage=2100,  # Updated to integer
     visual_range=NauticalMiles(5),
     visual_detection_rate=0.8,
+    base_damage=25.0,  # Fletcher-class had powerful 5"/38 guns
+    optimal_range=NauticalMiles(7.5),  # 5"/38 guns were effective at medium range
 )
 
 # IJN Yukikaze - Kagero-class destroyer
@@ -122,6 +130,8 @@ IJN_YUKIKAZE = ShipSpecification(
     tonnage=2033,  # Updated to integer
     visual_range=NauticalMiles(6),  # Adjusted slightly for historical accuracy if needed
     visual_detection_rate=0.7,
+    base_damage=22.0,  # Kagero-class had Type 3 127mm guns
+    optimal_range=NauticalMiles(8.0),  # Japanese guns typically had longer range
 )
 
 # Fictional pirate ship based on historical pirate vessels
@@ -146,6 +156,8 @@ PIRATE_QUEEN = ShipSpecification(
     tonnage=1500,  # Updated to integer
     visual_range=NauticalMiles(4),  # Lower for a fictional pirate ship
     visual_detection_rate=0.6,
+    base_damage=15.0,  # Lighter armament than military vessels
+    optimal_range=NauticalMiles(5.0),  # Shorter range for close-quarters combat
 )
 
 # Dictionary of all test ships for easy lookup

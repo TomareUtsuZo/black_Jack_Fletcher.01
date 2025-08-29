@@ -1,5 +1,6 @@
 import logging  # Import for logging errors or events
 from typing import List, Optional
+import numpy as np
 from src.backend.models.units.unit import Unit, UnitState
 from src.backend.models.units.protocols.unit_module_protocol import UnitModule
 
@@ -68,13 +69,12 @@ class Attack(UnitModule):
 
     def calculate_attack_effectiveness(self, target: Unit) -> float:
         """
-        Calculate the effectiveness of an attack against the target.
-        Currently returns a fixed damage value, but can be expanded to include:
-        - Distance-based effectiveness
-        - Weapon types and capabilities
-        - Target armor/defense
-        - Environmental conditions
-        - Critical hit chances
+        Calculate the effectiveness of an attack against the target based on range and normal distribution.
+        
+        The damage calculation follows these rules:
+        1. At 1nm or less: Normal distribution of base damage with 25% standard deviation
+        2. At optimal range: Normal distribution with 20% of base damage
+        3. Linear interpolation between these points
         
         Args:
             target: The unit being attacked
@@ -82,16 +82,41 @@ class Attack(UnitModule):
         Returns:
             float: The calculated damage amount
         """
-        # For now, return fixed damage value
-        # This is a placeholder for more sophisticated calculations
-        base_damage = 10.0
+        # Get the distance to target
+        distance = self.attacker.attributes.position.distance_to(target.attributes.position)
+        base_damage = self.attacker.attributes.base_damage
+        optimal_range = self.attacker.attributes.optimal_range.value
+        
+        # Calculate standard deviation based on range
+        if distance <= 1.0:  # Within 1 nautical mile
+            # Full damage with 25% standard deviation at close range
+            mean_damage = base_damage
+            std_dev = base_damage * 0.25
+        elif distance >= optimal_range:  # At or beyond optimal range
+            # 20% of base damage at optimal range and beyond
+            mean_damage = base_damage * 0.2  # Reduced to 20% of base damage
+            std_dev = base_damage * 0.25  # Keep same absolute std dev as close range
+            # This means at long range, the variation is relatively larger compared to mean damage
+        else:
+            # Linear interpolation between 1nm and optimal range
+            range_factor = (distance - 1.0) / (optimal_range - 1.0)
+            # Interpolate between full damage at close range and 20% at optimal range
+            mean_damage = base_damage * (1.0 - range_factor * 0.8)  # Linear reduction from 100% to 20%
+            std_dev = mean_damage * 0.25  # Keep same relative std dev
+            
+        # Generate damage using normal distribution
+        damage = float(np.random.normal(mean_damage, std_dev))
+        
+        # Ensure damage is not negative
+        damage = max(0.0, damage)
         
         logging.debug(
-            f"{self.attacker.attributes.name} calculating attack effectiveness against "
-            f"{target.attributes.name}: {base_damage} damage"
+            f"{self.attacker.attributes.name} attacking {target.attributes.name} "
+            f"at range {distance:.1f}nm: {damage:.1f} damage "
+            f"(mean: {mean_damage:.1f}, std: {std_dev:.1f})"
         )
         
-        return base_damage
+        return damage
         
     def determine_damage_effectiveness(self, target: Unit, base_damage: float) -> float:
         """
@@ -153,6 +178,26 @@ class Attack(UnitModule):
         target.take_damage(damage)  # Use take_damage to ensure proper state transitions
         logging.info(f"{self.attacker.attributes.hull_number} attacked {target.attributes.hull_number} for {damage:g} damage")
         
+    def attack(self, target: Unit) -> None:
+        """
+        Execute an attack against the target unit.
+        This method ties together the damage calculation and application process.
+        
+        Args:
+            target: The unit to attack
+        """
+        # Calculate damage based on range and other factors
+        damage = self.calculate_attack_effectiveness(target)
+        
+        # Check for critical hits (currently a placeholder)
+        self.check_for_critical_result(target, damage)
+        
+        # Apply the damage to the target
+        self.send_damage_to_target(target, damage)
+        
+        # Perform any necessary post-attack upkeep
+        self.perform_upkeep()
+    
     def perform_upkeep(self) -> None:
         """
         Perform any necessary upkeep after an attack.

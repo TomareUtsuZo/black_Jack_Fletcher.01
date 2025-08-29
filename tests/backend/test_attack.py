@@ -1,4 +1,5 @@
 import pytest
+import logging
 from src.backend.models.units.unit import Unit, UnitState, UnitType
 from src.backend.models.units.modules.attack import Attack
 from src.backend.models.common.geometry.nautical_miles import NauticalMiles
@@ -27,7 +28,9 @@ def create_test_unit(name: str, faction: str, position: Position) -> Unit:
         crew=50,
         visual_range=NauticalMiles(20),
         visual_detection_rate=0.5,
-        tonnage=5000
+        tonnage=5000,
+        base_damage=20.0,  # Test ship base damage
+        optimal_range=NauticalMiles(8.0)  # Test ship optimal range
     )
 
 def test_protocol_implementation() -> None:
@@ -75,18 +78,80 @@ def test_damage_effectiveness() -> None:
     """Test the damage effectiveness calculation system"""
     # Create test units
     attacker = create_test_unit("Attacker", "TestFaction", Position(x=0, y=0))
-    target = create_test_unit("Target", "EnemyFaction", Position(x=1, y=0))
+    
+    # Test targets at different ranges
+    close_target = create_test_unit("CloseTarget", "EnemyFaction", Position(x=0.01, y=0))  # ~1nm
+    mid_target = create_test_unit("MidTarget", "EnemyFaction", Position(x=0.05, y=0))  # ~3nm
+    optimal_target = create_test_unit("OptimalTarget", "EnemyFaction",
+                                    Position(x=attacker.attributes.optimal_range.value, y=0))  # At optimal range
+    far_target = create_test_unit("FarTarget", "EnemyFaction",
+                                Position(x=attacker.attributes.optimal_range.value + 2.0, y=0))  # Beyond optimal
     
     # Get attack module
     attack_module = Attack(attacker=attacker)
     attacker.add_module('attack', attack_module)
     
-    # Test base damage calculation
-    base_damage = attack_module.determine_damage_effectiveness(target, 10.0)
-    assert base_damage == 10.0, "Base damage should be unchanged in current implementation"
+    # Test close range damage (should be highest)
+    close_damages = [attack_module.calculate_attack_effectiveness(close_target) for _ in range(100)]
+    close_mean = sum(close_damages) / len(close_damages)
+    close_min, close_max = min(close_damages), max(close_damages)
+    
+    # Test optimal range damage (should be lower)
+    optimal_damages = [attack_module.calculate_attack_effectiveness(optimal_target) for _ in range(100)]
+    optimal_mean = sum(optimal_damages) / len(optimal_damages)
+    optimal_min, optimal_max = min(optimal_damages), max(optimal_damages)
+    
+    # Test far range damage (should be lowest)
+    far_damages = [attack_module.calculate_attack_effectiveness(far_target) for _ in range(100)]
+    far_mean = sum(far_damages) / len(far_damages)
+    far_min, far_max = min(far_damages), max(far_damages)
+    
+    # Verify damage varies between shots (not constant)
+    assert close_min != close_max, "Close range damage should vary between shots"
+    assert optimal_min != optimal_max, "Optimal range damage should vary between shots"
+    assert far_min != far_max, "Far range damage should vary between shots"
+    
+    # With 25% standard deviation, means can vary significantly
+    # Compare means with allowance for one standard deviation (±25%)
+    base_damage = attacker.attributes.base_damage
+    std_dev = base_damage * 0.25  # 25% of base damage
+    
+    logging.debug(f"Damage means - Close: {close_mean:.2f}, Optimal: {optimal_mean:.2f}, Far: {far_mean:.2f}")
+    logging.debug(f"Standard deviation: {std_dev:.2f}")
+    
+    # Close range should be higher than optimal range, allowing for variation
+    assert close_mean + std_dev > optimal_mean - std_dev, "Close range should tend to do more damage than optimal range"
+    
+    # Optimal range should be higher than far range, allowing for variation
+    assert optimal_mean + std_dev > far_mean - std_dev, "Optimal range should tend to do more damage than far range"
+    
+    # Verify the ranges of damage are reasonable
+    assert close_max > base_damage, "Close range should be capable of high damage"
+    # At optimal range and beyond, mean is 20% of base with 25% std dev
+    # So minimum should be able to go below 20% of base damage
+    assert far_min < base_damage * 0.2, "Far range should be capable of very low damage"
+    
+    # Verify damage is never negative
+    assert min(close_damages + optimal_damages + far_damages) >= 0, "Damage should never be negative"
+    
+    # Log some stats for debugging
+    logging.debug(f"Close range damage: mean={close_mean:.1f}, min={close_min:.1f}, max={close_max:.1f}")
+    logging.debug(f"Optimal range damage: mean={optimal_mean:.1f}, min={optimal_min:.1f}, max={optimal_max:.1f}")
+    logging.debug(f"Far range damage: mean={far_mean:.1f}, min={far_min:.1f}, max={far_max:.1f}")
+    
+    # Test mid-range damage (should be between close and optimal range damage)
+    mid_damages = [attack_module.calculate_attack_effectiveness(mid_target) for _ in range(100)]
+    mid_mean = sum(mid_damages) / len(mid_damages)
+    logging.debug(f"Mid-range damage: mean={mid_mean:.1f}")
+    
+    # Allow for standard deviation in the comparisons
+    assert mid_mean + std_dev > optimal_mean - std_dev, "Mid-range should not be significantly lower than optimal range"
+    assert close_mean + std_dev > mid_mean - std_dev, "Close range should not be significantly lower than mid-range"
     
     # Verify target health is not affected by just calculating effectiveness
-    assert target.attributes.current_health == 100.0, "Damage calculation should not affect health"
+    assert close_target.attributes.current_health == 100.0, "Damage calculation should not affect health"
+    assert optimal_target.attributes.current_health == 100.0, "Damage calculation should not affect health"
+    assert far_target.attributes.current_health == 100.0, "Damage calculation should not affect health"
 
 def test_critical_result() -> None:
     """Test the critical hit system"""
@@ -111,100 +176,17 @@ def test_attack() -> None:  # Added return type to fix mypy error
     sunk_unit_position = Position(x=3, y=3)
     
     # Create attacker unit
-    attacker = Unit(
-        unit_id=uuid.uuid4(),
-        name="Attacker",
-        hull_number="A1",
-        unit_type=UnitType.DESTROYER,
-        task_force_assigned_to=None,
-        ship_class="TestClass",
-        faction="TestFaction",
-        position=unit1_position,
-        destination=None,
-        max_speed=NauticalMiles(30),
-        cruise_speed=NauticalMiles(20),
-        current_speed=NauticalMiles(15),
-        max_health=100.0,
-        current_health=100.0,
-        max_fuel=100.0,
-        current_fuel=100.0,
-        crew=50,
-        visual_range=NauticalMiles(20),
-        visual_detection_rate=0.5,
-        tonnage=5000
-    )
-    
+    attacker = create_test_unit("Attacker", "TestFaction", unit1_position)
+
     # Create enemy target unit
-    enemy_target = Unit(
-        unit_id=uuid.uuid4(),
-        name="Enemy Target",
-        hull_number="T1",
-        unit_type=UnitType.DESTROYER,
-        task_force_assigned_to=None,
-        ship_class="TestClass",
-        faction="EnemyFaction",
-        position=unit2_position,
-        destination=None,
-        max_speed=NauticalMiles(30),
-        cruise_speed=NauticalMiles(20),
-        current_speed=NauticalMiles(15),
-        max_health=100.0,
-        current_health=100.0,
-        max_fuel=100.0,
-        current_fuel=100.0,
-        crew=50,
-        visual_range=NauticalMiles(20),
-        visual_detection_rate=0.5,
-        tonnage=5000
-    )
-    
+    enemy_target = create_test_unit("Enemy Target", "EnemyFaction", unit2_position)
+
     # Create friendly unit (same faction as attacker)
-    friendly_unit = Unit(
-        unit_id=uuid.uuid4(),
-        name="Friendly Unit",
-        hull_number="F1",
-        unit_type=UnitType.DESTROYER,
-        task_force_assigned_to=None,
-        ship_class="TestClass",
-        faction="TestFaction",  # Same faction as attacker
-        position=friendly_unit_position,
-        destination=None,
-        max_speed=NauticalMiles(30),
-        cruise_speed=NauticalMiles(20),
-        current_speed=NauticalMiles(15),
-        max_health=100.0,
-        current_health=100.0,
-        max_fuel=100.0,
-        current_fuel=100.0,
-        crew=50,
-        visual_range=NauticalMiles(20),
-        visual_detection_rate=0.5,
-        tonnage=5000
-    )
-    
+    friendly_unit = create_test_unit("Friendly Unit", "TestFaction", friendly_unit_position)
+
     # Create sunk enemy unit
-    sunk_enemy = Unit(
-        unit_id=uuid.uuid4(),
-        name="Sunk Enemy",
-        hull_number="S1",
-        unit_type=UnitType.DESTROYER,
-        task_force_assigned_to=None,
-        ship_class="TestClass",
-        faction="EnemyFaction",
-        position=sunk_unit_position,
-        destination=None,
-        max_speed=NauticalMiles(30),
-        cruise_speed=NauticalMiles(20),
-        current_speed=NauticalMiles(15),
-        max_health=100.0,
-        current_health=0.0,  # Start with 0 health
-        max_fuel=100.0,
-        current_fuel=100.0,
-        crew=50,
-        visual_range=NauticalMiles(20),
-        visual_detection_rate=0.5,
-        tonnage=5000
-    )
+    sunk_enemy = create_test_unit("Sunk Enemy", "EnemyFaction", sunk_unit_position)
+    sunk_enemy.attributes.current_health = 0.0  # Start with 0 health
     sunk_enemy.take_damage(1)  # This will trigger the transition to SINKING state
     
     # Test initial states
@@ -215,28 +197,7 @@ def test_attack() -> None:  # Added return type to fix mypy error
     
     # Test targeting logic - should only attack enemy_target (not friendly or sunk units)
     # Create a farther enemy unit
-    far_enemy = Unit(
-        unit_id=uuid.uuid4(),
-        name="Far Enemy",
-        hull_number="F1",
-        unit_type=UnitType.DESTROYER,
-        task_force_assigned_to=None,
-        ship_class="TestClass",
-        faction="EnemyFaction",
-        position=Position(x=10, y=10),  # Much farther away
-        destination=None,
-        max_speed=NauticalMiles(30),
-        cruise_speed=NauticalMiles(20),
-        current_speed=NauticalMiles(15),
-        max_health=100.0,
-        current_health=100.0,
-        max_fuel=100.0,
-        current_fuel=100.0,
-        crew=50,
-        visual_range=NauticalMiles(20),
-        visual_detection_rate=0.5,
-        tonnage=5000
-    )
+    far_enemy = create_test_unit("Far Enemy", "EnemyFaction", Position(x=10, y=10))
     
     # Test with multiple valid targets at different distances
     detected_units = [far_enemy, enemy_target, friendly_unit, sunk_enemy]
@@ -248,25 +209,34 @@ def test_attack() -> None:  # Added return type to fix mypy error
         attack_module = Attack(attacker=attacker)
         attacker.add_module('attack', attack_module)
     
-    # Test damage calculation
-    base_damage = attack_module.determine_damage_effectiveness(enemy_target, 10.0)
-    assert base_damage == 10.0, "Base damage calculation should be 10.0"
+    # Test damage calculation at close range
+    enemy_target.attributes.position = Position(x=0.01, y=0)  # Move target to close range
     
-    # Verify health isn't affected by damage calculation
+    # First test that calculations and checks don't affect health
+    damage = attack_module.calculate_attack_effectiveness(enemy_target)
+    assert damage > 0, "Calculated damage should be positive"
     assert enemy_target.attributes.current_health == 100.0, "Damage calculation should not affect health"
-    
+
     # Test critical check doesn't affect health
-    attack_module.check_for_critical_result(enemy_target, base_damage)
+    attack_module.check_for_critical_result(enemy_target, damage)
     assert enemy_target.attributes.current_health == 100.0, "Critical check should not affect health"
+
+    # Now test actual attack execution
+    initial_health = enemy_target.attributes.current_health
+    attack_module.attack(enemy_target)
+    assert enemy_target.attributes.current_health < initial_health, "Attack should do some damage"
+    assert enemy_target.attributes.current_health > 0, "Single attack shouldn't instantly destroy target"
     
     # Test attack execution with target selection
     attacker.perform_attack(detected_units)
     
-    # Verify closest enemy (enemy_target) took calculated damage, others did not
-    assert enemy_target.attributes.current_health == 90.0  # Took 10 damage (closest at position 1,1)
-    assert far_enemy.attributes.current_health == 100.0  # No damage (farther at position 10,10)
-    assert friendly_unit.attributes.current_health == 100.0  # No damage (friendly)
-    assert sunk_enemy.attributes.current_health == 0.0  # No change (sunk)
+    # Verify closest enemy (enemy_target) took damage within expected range, others did not
+    # At close range (0.01nm), damage should be reasonable
+    # Health should be between 50% and 100% (allowing for high damage but not instant kills)
+    assert 50.0 <= enemy_target.attributes.current_health <= 100.0, "Damage at close range should be significant but not instantly lethal"
+    assert far_enemy.attributes.current_health == 100.0, "No damage (farther at position 10,10)"
+    assert friendly_unit.attributes.current_health == 100.0, "No damage (friendly)"
+    assert sunk_enemy.attributes.current_health == 0.0, "No change (sunk)"
     
     # Verify states remained appropriate
     assert enemy_target.is_in_state(UnitState.OPERATING)
@@ -274,14 +244,16 @@ def test_attack() -> None:  # Added return type to fix mypy error
     assert sunk_enemy.is_in_state(UnitState.SINKING)
 
     # Test that ship stays OPERATING until health reaches 0
-    enemy_target.take_damage(75)  # This brings health to 15
-    assert enemy_target.attributes.current_health == 15.0
-    assert enemy_target.is_in_state(UnitState.OPERATING)  # Ship should still be operating above 0 health
+    current_health = enemy_target.attributes.current_health
+    enemy_target.take_damage(current_health * 0.75)  # Reduce health by 75%
+    remaining_health = enemy_target.attributes.current_health
+    assert 0 < remaining_health < current_health, "Health should be reduced but not zero"
+    assert enemy_target.is_in_state(UnitState.OPERATING), "Ship should still be operating above 0 health"
     
     # Test transition to SINKING state when health reaches 0
-    enemy_target.take_damage(15)  # This brings health to 0
-    assert enemy_target.attributes.current_health == 0.0  # Verify health is exactly 0
-    assert enemy_target.is_in_state(UnitState.SINKING)  # Ship should be sinking when health reaches 0
+    enemy_target.take_damage(remaining_health)  # This brings health to 0
+    assert enemy_target.attributes.current_health == 0.0, "Health should be exactly 0"
+    assert enemy_target.is_in_state(UnitState.SINKING), "Ship should be sinking when health reaches 0"
     
     # Test direct damage application
     test_target = Unit(
