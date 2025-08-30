@@ -62,7 +62,7 @@ def test_daytime_detection(unit_instance: Unit) -> None:
     
     with patch.object(detection_module._game_state_manager, 'get_all_units') as mock_get_units:
         mock_get_units.return_value = [unit_instance, target_unit]
-        with patch('src.backend.models.units.modules.detection.calculate_vincenty_distance') as mock_distance:
+        with patch('src.backend.models.units.modules.detection.calculate_cartesian_distance') as mock_distance:
             mock_distance.return_value = NauticalMiles(10.0)  # Within base range
             
             # Mock random to always succeed detection check
@@ -90,7 +90,7 @@ def test_night_detection_full_moon(unit_instance: Unit) -> None:
         
         with patch.object(detection_module._game_state_manager, 'get_all_units') as mock_get_units:
             mock_get_units.return_value = [unit_instance, target_unit]
-            with patch('src.backend.models.units.modules.detection.calculate_vincenty_distance') as mock_distance:
+            with patch('src.backend.models.units.modules.detection.calculate_cartesian_distance') as mock_distance:
                 mock_distance.return_value = NauticalMiles(5.0)  # At full moon night range
                 
                 # Mock random to always succeed detection check
@@ -118,7 +118,7 @@ def test_night_detection_new_moon(unit_instance: Unit) -> None:
         
         with patch.object(detection_module._game_state_manager, 'get_all_units') as mock_get_units:
             mock_get_units.return_value = [unit_instance, target_unit]
-            with patch('src.backend.models.units.modules.detection.calculate_vincenty_distance') as mock_distance:
+            with patch('src.backend.models.units.modules.detection.calculate_cartesian_distance') as mock_distance:
                 # Test beyond new moon range
                 mock_distance.return_value = NauticalMiles(1.5)
                 # Mock random to always succeed detection check (but should still fail due to range)
@@ -151,7 +151,7 @@ def test_dawn_dusk_detection(unit_instance: Unit) -> None:
         
         with patch.object(detection_module._game_state_manager, 'get_all_units') as mock_get_units:
             mock_get_units.return_value = [unit_instance, target_unit]
-            with patch('src.backend.models.units.modules.detection.calculate_vincenty_distance') as mock_distance:
+            with patch('src.backend.models.units.modules.detection.calculate_cartesian_distance') as mock_distance:
                 # Test at exactly 10nm
                 mock_distance.return_value = NauticalMiles(10.0)
                 # Mock random to always succeed detection check

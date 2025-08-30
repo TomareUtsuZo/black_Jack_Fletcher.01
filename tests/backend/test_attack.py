@@ -29,7 +29,7 @@ def create_test_unit(name: str, faction: str, position: Position) -> Unit:
         visual_range=NauticalMiles(20),
         visual_detection_rate=0.5,
         tonnage=5000,
-        base_damage=20.0,  # Test ship base damage
+        base_damage=10.0,  # Test ship base damage (matches Fletcher)
         optimal_range=NauticalMiles(8.0)  # Test ship optimal range
     )
 
@@ -126,9 +126,16 @@ def test_damage_effectiveness() -> None:
     assert optimal_mean + std_dev > far_mean - std_dev, "Optimal range should tend to do more damage than far range"
     
     # Verify the ranges of damage are reasonable
+    # Close range (≤1 NM): Normal distribution with mean = base_damage, std_dev = base_damage * 0.25
+    assert abs(close_mean - base_damage) < std_dev, "Close range mean should be near base damage"
     assert close_max > base_damage, "Close range should be capable of high damage"
-    # At optimal range and beyond, mean is 20% of base with 25% std dev
-    # So minimum should be able to go below 20% of base damage
+    
+    # Optimal range: Normal distribution with mean = base_damage * 0.2, std_dev = base_damage * 0.25
+    optimal_expected = base_damage * 0.2
+    assert abs(optimal_mean - optimal_expected) < std_dev, "Optimal range mean should be near 20% of base damage"
+    
+    # Far range (≥optimal): Same as optimal range
+    assert abs(far_mean - optimal_expected) < std_dev, "Far range mean should be near 20% of base damage"
     assert far_min < base_damage * 0.2, "Far range should be capable of very low damage"
     
     # Verify damage is never negative
@@ -220,20 +227,19 @@ def test_attack() -> None:  # Added return type to fix mypy error
     # Test critical check doesn't affect health
     attack_module.check_for_critical_result(enemy_target, damage)
     assert enemy_target.attributes.current_health == 100.0, "Critical check should not affect health"
-
-    # Now test actual attack execution
-    initial_health = enemy_target.attributes.current_health
-    attack_module.attack(enemy_target)
-    assert enemy_target.attributes.current_health < initial_health, "Attack should do some damage"
-    assert enemy_target.attributes.current_health > 0, "Single attack shouldn't instantly destroy target"
-    
     # Test attack execution with target selection
+    initial_health = enemy_target.attributes.current_health
     attacker.perform_attack(detected_units)
+    
+    # At close range with base_damage=10.0 and 25% std_dev, damage should be 10 ± 2.5
+    damage_taken = initial_health - enemy_target.attributes.current_health
+    assert 7.5 <= damage_taken <= 12.5, "Damage at close range should be around 10 ± 2.5 points"
+    assert enemy_target.attributes.current_health > 0, "Single attack shouldn't instantly destroy target"
     
     # Verify closest enemy (enemy_target) took damage within expected range, others did not
     # At close range (0.01nm), damage should be reasonable
-    # Health should be between 50% and 100% (allowing for high damage but not instant kills)
-    assert 50.0 <= enemy_target.attributes.current_health <= 100.0, "Damage at close range should be significant but not instantly lethal"
+    # At close range with base_damage=10.0 and 25% std_dev, health should be between 87.5 and 92.5
+    assert 87.5 <= enemy_target.attributes.current_health <= 92.5, "Damage at close range should be around 10 ± 2.5 points"
     assert far_enemy.attributes.current_health == 100.0, "No damage (farther at position 10,10)"
     assert friendly_unit.attributes.current_health == 100.0, "No damage (friendly)"
     assert sunk_enemy.attributes.current_health == 0.0, "No change (sunk)"
