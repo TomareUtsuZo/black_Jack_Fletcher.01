@@ -14,7 +14,7 @@ from backend.models.common.geometry.nautical_miles import NauticalMiles
 from backend.models.game_state_manager import GameStateManager
 from backend.models.units.unit import UnitState
 from backend.models.common.time.game_time import GameTime
-from backend.models.common.geometry.vincenty import calculate_vincenty_distance
+from backend.models.units.modules.movement import calculate_cartesian_distance
 
 
 WAKE_X = 166.62
@@ -71,7 +71,7 @@ def _label(u: Unit) -> str:
     return f"{u.attributes.name} ({u.attributes.hull_number}) [{u.attributes.faction}]"
 
 
-def run_test_scenario(max_ticks: int = 60) -> None:
+def run_test_scenario(max_ticks: int = 10) -> None:  # Run for 10 minutes - ships should detect and engage
     gsm = GameStateManager.get_instance()
 
     us_units = [
@@ -81,21 +81,8 @@ def run_test_scenario(max_ticks: int = 60) -> None:
         _spec_to_unit(IJN_YUKIKAZE),
     ]
 
-    # Compute separation: 2 nm outside visual ranges for both sides
-    # Use the smaller of the two ships' visual ranges for symmetric start
-    us_vr = us_units[0].attributes.visual_range.value if us_units else 15.0
-    ijn_vr = ijn_units[0].attributes.visual_range.value if ijn_units else 15.0
-    min_visual_nm = min(us_vr, ijn_vr)
-    start_sep_nm = (min_visual_nm + 2.0) * 2.0  # total gap so each is 2 nm outside own radius
-    # Convert nm to degrees of longitude at WAKE_Y
-    deg_per_nm_lon = 1.0 / (60.0 * max(math.cos(math.radians(WAKE_Y)), 1e-6))
-    sep_deg = start_sep_nm * deg_per_nm_lon
-
-    # Place ships along x-axis centered on WAKE_X
-    if us_units:
-        us_units[0].attributes.position = Position(WAKE_X + sep_deg / 2.0, WAKE_Y)
-    if ijn_units:
-        ijn_units[0].attributes.position = Position(WAKE_X - sep_deg / 2.0, WAKE_Y)
+    # Start ships 60 NM apart and have them pass each other at full speed
+    # This ensures they'll have time to detect, engage, and pass each other
 
     # Attach modules and register
     for u in us_units + ijn_units:
@@ -109,17 +96,20 @@ def run_test_scenario(max_ticks: int = 60) -> None:
             'unit_id': str(u.attributes.unit_id)
         })
 
-    # Assign fixed reciprocal tracks: US westbound, IJN eastbound, with far destinations
-    # Destinations are several degrees away to avoid early stopping
-    for u in us_units:
-        dest = Position(WAKE_X - 5.0, WAKE_Y)  # far west
-        u.set_destination(dest)
-        u.set_speed(NauticalMiles(20.0))
+    # Place ships 7 NM apart on a north-south line (just outside visual range)
+    if us_units:
+        # US ship starts south and moves north
+        us_units[0].attributes.position = Position(WAKE_X, WAKE_Y - 3.5)  # 3.5 NM south
+        dest = Position(WAKE_X, WAKE_Y + 3.5)  # Moving 7 NM north
+        us_units[0].set_destination(dest)
+        us_units[0].set_speed(us_units[0].attributes.max_speed)  # Full speed (36.5 knots)
 
-    for u in ijn_units:
-        dest = Position(WAKE_X + 5.0, WAKE_Y)  # far east
-        u.set_destination(dest)
-        u.set_speed(NauticalMiles(20.0))
+    if ijn_units:
+        # IJN ship starts north and moves south
+        ijn_units[0].attributes.position = Position(WAKE_X, WAKE_Y + 3.5)  # 3.5 NM north
+        dest = Position(WAKE_X, WAKE_Y - 3.5)  # Moving 7 NM south
+        ijn_units[0].set_destination(dest)
+        ijn_units[0].set_speed(ijn_units[0].attributes.max_speed)  # Full speed (35.5 knots)
 
     # Run ticks and let units detect/attack via perform_tick
     # Ensure the state machine allows ticks to be processed
@@ -146,7 +136,7 @@ def run_test_scenario(max_ticks: int = 60) -> None:
             ux, uy = us_units[0].attributes.position.x, us_units[0].attributes.position.y
             ex, ey = ijn_units[0].attributes.position.x, ijn_units[0].attributes.position.y
             sep_units = ((ux - ex) ** 2 + (uy - ey) ** 2) ** 0.5
-            sep_nm = calculate_vincenty_distance(us_units[0].attributes.position,
+            sep_nm = calculate_cartesian_distance(us_units[0].attributes.position,
                                                  ijn_units[0].attributes.position)
             print(f"{COLOR_SEP}Separation: {sep_units:.6f} game units, {sep_nm.value:.2f} NM{RESET}")
 
@@ -168,6 +158,13 @@ def run_test_scenario(max_ticks: int = 60) -> None:
                 if detected:
                     tags = ", ".join(_label(x) for x in detected)
                     print(f"{COLOR_DETECT}{force_name} {_label(u)} detected: {tags}{RESET}")
+                    
+                    # When a ship detects enemies, engage the nearest one
+                    attack_module = u.get_module('attack')
+                    if attack_module:
+                        nearest = _nearest_enemy(u, enemies)
+                        attack_module.attack(nearest)
+                        print(f"{COLOR_DMG}{_label(u)} firing at {_label(nearest)}{RESET}")
 
         # Damage and sinking evidence
         for u in (us_units + ijn_units):

@@ -229,6 +229,7 @@ class MovementModule:
             return
             
         # Calculate distance we can travel in this time step
+        # time_delta is already in hours (converted in game state manager)
         distance_can_travel = self.unit_attributes.current_speed * time_delta
         
         # Check if destination is closer than what we can travel
@@ -240,7 +241,8 @@ class MovementModule:
                 self.stop()
                 return
             # If we have a destination, only move the shorter of the two distances
-            distance_can_travel = min(distance_can_travel, distance_to_destination)
+            # Compare the values directly since we know both are NauticalMiles
+            distance_can_travel = distance_can_travel if distance_can_travel.value < distance_to_destination.value else distance_to_destination
         
         # Calculate and apply movement directly in game units
         dx, dy = self._calculate_movement_vector(distance_can_travel)

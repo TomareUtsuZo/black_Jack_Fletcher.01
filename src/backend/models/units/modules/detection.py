@@ -1,7 +1,7 @@
 from src.backend.models.units.unit import UnitModule, Unit
 from src.backend.models.game_state_manager import GameStateManager
 from src.backend.models.common.geometry.nautical_miles import NauticalMiles
-from src.backend.models.common.geometry.vincenty import calculate_vincenty_distance
+from src.backend.models.units.modules.movement import calculate_cartesian_distance
 from typing import List
 import random
 from src.backend.models.common.time.game_time import GameTime
@@ -54,7 +54,7 @@ class DetectionModule(UnitModule):
         detected_units = []
         for other_unit in self._game_state_manager.get_all_units():
             if other_unit != self._unit:
-                distance = calculate_vincenty_distance(self._unit.attributes.position, other_unit.attributes.position)
+                distance = calculate_cartesian_distance(self._unit.attributes.position, other_unit.attributes.position)
                 if distance.value <= detection_range.value and random.random() <= base_detection_rate:
                     detected_units.append(other_unit)
         return detected_units

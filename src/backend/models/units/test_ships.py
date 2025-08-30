@@ -79,7 +79,7 @@ USS_FLETCHER = ShipSpecification(
     tonnage=2100,  # Updated to integer
     visual_range=NauticalMiles(5),
     visual_detection_rate=0.8,
-    base_damage=25.0,  # Fletcher-class had powerful 5"/38 guns
+    base_damage=10.0,  # Base damage for 5"/38 guns
     optimal_range=NauticalMiles(7.5),  # 5"/38 guns were effective at medium range
 )
 
@@ -104,7 +104,7 @@ USS_TALEN = ShipSpecification(
     tonnage=2100,  # Updated to integer
     visual_range=NauticalMiles(5),
     visual_detection_rate=0.8,
-    base_damage=25.0,  # Fletcher-class had powerful 5"/38 guns
+    base_damage=10.0,  # Base damage for 5"/38 guns
     optimal_range=NauticalMiles(7.5),  # 5"/38 guns were effective at medium range
 )
 
@@ -130,7 +130,7 @@ IJN_YUKIKAZE = ShipSpecification(
     tonnage=2033,  # Updated to integer
     visual_range=NauticalMiles(6),  # Adjusted slightly for historical accuracy if needed
     visual_detection_rate=0.7,
-    base_damage=22.0,  # Kagero-class had Type 3 127mm guns
+    base_damage=9.0,  # Base damage for Type 3 127mm guns
     optimal_range=NauticalMiles(8.0),  # Japanese guns typically had longer range
 )
 

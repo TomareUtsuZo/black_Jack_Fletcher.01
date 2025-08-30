@@ -178,7 +178,7 @@ class GameStateManager:
             before = self._time_controller.current_time
             after = self._time_controller.advance_time()
             elapsed = after - before  # Calculate actual elapsed time
-            delta_hours = elapsed.seconds / 3600.0  # Convert to hours for movement calculations
+            delta_hours = 1.0 / 60.0  # One minute per tick = 1/60th of an hour
             self._unit_manager.update_unit_states(delta_hours)
         except ValueError as e:
             self._handle_time_limit_reached(e)
